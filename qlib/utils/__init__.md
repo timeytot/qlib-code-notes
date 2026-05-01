@@ -456,27 +456,26 @@ FLATTEN_TUPLE = "__flatten_tuple__"
 
 This is useful when you need to preserve the hierarchical structure of keys but don't want to use string concatenation.
 
-````markdown
-# Difference Between `bisect_left` and `bisect_right`
+# `bisect_left` vs `bisect_right`
+
+## Core Idea
 
 Prerequisite: the input array must be sorted in ascending order.
 
 In Python, `bisect_left` and `bisect_right` are used to find insertion positions in a sorted array.
 
-Core rules:
-
-```text
-bisect_left(a, x)       = first position where value >= x
-bisect_right(a, x)      = first position where value > x
-bisect_right(a, x) - 1  = last position where value <= x
-````
+| Function                 | Meaning                           |
+| ------------------------ | --------------------------------- |
+| `bisect_left(a, x)`      | First position where `value >= x` |
+| `bisect_right(a, x)`     | First position where `value > x`  |
+| `bisect_right(a, x) - 1` | Last position where `value <= x`  |
 
 Another way to remember it:
 
-```text
-bisect_left  inserts x before existing equal values
-bisect_right inserts x after existing equal values
-```
+| Function       | Insertion behavior                       |
+| -------------- | ---------------------------------------- |
+| `bisect_left`  | Inserts `x` before existing equal values |
+| `bisect_right` | Inserts `x` after existing equal values  |
 
 ---
 
@@ -503,16 +502,11 @@ value: 1  2  4  4  4  6
 
 Explanation:
 
-```text
-bisect_left(a, 4) = 2
-This is the first position where value >= 4.
-
-bisect_right(a, 4) = 5
-This is the first position where value > 4.
-
-bisect_right(a, 4) - 1 = 4
-This is the last position where value <= 4.
-```
+| Expression               | Result | Meaning                           |
+| ------------------------ | -----: | --------------------------------- |
+| `bisect_left(a, 4)`      |    `2` | First position where `value >= 4` |
+| `bisect_right(a, 4)`     |    `5` | First position where `value > 4`  |
+| `bisect_right(a, 4) - 1` |    `4` | Last position where `value <= 4`  |
 
 ---
 
@@ -590,18 +584,14 @@ cal = [
     "2025-01-04",
     "2025-01-05",
 ]
-```
 
-If:
-
-```python
 trading_date = "2025-01-03"
 ```
 
 Then:
 
 ```python
-bisect.bisect_right(cal, "2025-01-03") - 1
+bisect.bisect_right(cal, trading_date) - 1
 ```
 
 points to:
@@ -646,18 +636,14 @@ cal = [
     "2025-01-04",
     "2025-01-05",
 ]
-```
 
-If:
-
-```python
 trading_date = "2025-01-03"
 ```
 
 Then:
 
 ```python
-bisect.bisect_left(cal, "2025-01-03")
+bisect.bisect_left(cal, trading_date)
 ```
 
 points to:
@@ -676,28 +662,20 @@ align="right" => align to 2025-01-04
 
 ## 6. Summary
 
-```text
-bisect_left(a, x)
-= first position where value >= x
-
-bisect_right(a, x)
-= first position where value > x
-
-bisect_right(a, x) - 1
-= last position where value <= x
-```
+| Expression               | Meaning                           |
+| ------------------------ | --------------------------------- |
+| `bisect_left(a, x)`      | First position where `value >= x` |
+| `bisect_right(a, x)`     | First position where `value > x`  |
+| `bisect_right(a, x) - 1` | Last position where `value <= x`  |
 
 In Qlib:
 
-```text
-align="left"
-= find the nearest trading date on the left
-= last trading date <= trading_date
-
-align="right"
-= find the nearest trading date on the right
-= first trading date >= trading_date
-```
+| Qlib option     | Meaning                              |
+| --------------- | ------------------------------------ |
+| `align="left"`  | Nearest trading date on the left     |
+| `align="left"`  | Last trading date `<= trading_date`  |
+| `align="right"` | Nearest trading date on the right    |
+| `align="right"` | First trading date `>= trading_date` |
 
 Core memory:
 
@@ -705,7 +683,4 @@ Core memory:
 left      = insert on the left side of equal values / find first >= x
 right     = insert on the right side of equal values / find first > x
 right - 1 = move back to the last <= x
-```
-
-```
 ```
