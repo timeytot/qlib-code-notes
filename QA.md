@@ -1,72 +1,107 @@
-# Resolving MLflow Filesystem Tracking Deprecation Warning in Qlib
-
-**Code References:**
-- [`qlib/workflow/__init__.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/__init__.py)
-- [`qlib/workflow/expm.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/expm.py)
+# Qlib: handle the MLflow filesystem tracking warning
 
 ## Problem
 
-When using Qlib's workflow with default MLflow settings, you may encounter this warning:
+When running Qlib workflows with the default recorder settings, MLflow may print a warning similar to this:
 
+```text
+FutureWarning: Filesystem tracking backend (for example, ./mlruns) is deprecated ...
 ```
-C:\Users\...\mlflow\tracking\_tracking_service\utils.py:140: FutureWarning: Filesystem tracking backend (e.g., './mlruns') is deprecated...
-```
 
-**What it means:** You're using the default local `./mlruns` folder for experiment tracking. MLflow is moving toward recommending database backends (e.g., SQLite), but local file storage still works perfectly fine for now.
+This is an MLflow tracking-store warning, not a Qlib model-training failure.
 
-## Solution
+## Short Answer
 
-### Option 1: Configure in `qlib.init()`
-
-Pass an `exp_manager` configuration to use SQLite backend:
+For reusable experiments, configure Qlib's MLflow tracking URI to a database backend, usually SQLite for local work:
 
 ```python
+from pathlib import Path
+
+import qlib
+from qlib.constant import REG_CN
+
+
+def mlflow_sqlite_uri(path: str = "mlflow.db") -> str:
+    return f"sqlite:///{Path(path).resolve().as_posix()}"
+
+
 qlib.init(
-    provider_uri=provider_uri,
+    provider_uri="~/.qlib/qlib_data/cn_data",
     region=REG_CN,
     exp_manager={
         "class": "MLflowExpManager",
         "module_path": "qlib.workflow.expm",
         "kwargs": {
-            "uri": "sqlite:///mlflow.db",        # Use SQLite instead of filesystem
-            "default_exp_name": "Experiment"  
-        }
-    }
+            "uri": mlflow_sqlite_uri("mlflow.db"),
+            "default_exp_name": "Experiment",
+        },
+    },
 )
 ```
 
-### Option 2: Configure when starting a run
+This changes the default experiment-manager URI for later `R.start(...)`, `R.list_experiments()`, and recorder lookup calls in that Qlib process.
 
-Specify the `uri` directly in the `R.start()` context manager:
+## Why It Happens
+
+Qlib's default experiment manager is `MLflowExpManager`. In the default config, its `uri` points to a local filesystem-backed `mlruns` directory under the current working directory. Newer MLflow versions recommend using database-backed tracking stores, such as SQLite, MySQL, or PostgreSQL.
+
+The old local filesystem backend can still work, but the warning is a signal that it is not the best long-term default for reproducible experiment tracking.
+
+## Alternatives
+
+### Set the URI after initialization
+
+If Qlib is already initialized and you only need to change the default recorder URI, use `R.set_uri(...)`:
 
 ```python
+from pathlib import Path
 from qlib.workflow import R
 
-with R.start(
-    experiment_name="train_model", 
-    uri="sqlite:///mlflow.db"                    # URI only used in qlib.workflow modules
-):
-    R.log_params(**flatten_dict(task))
-    model.fit(dataset)
-    R.save_objects(trained_model=model)
-    rid = R.get_recorder().id
+R.set_uri(f"sqlite:///{Path('mlflow.db').resolve().as_posix()}")
 ```
 
-**Note:** The `uri` parameter is specifically used in [`qlib/workflow/__init__.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/__init__.py) and [`qlib/workflow/expm.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/expm.py).
+Use this before starting or querying experiments.
 
-### Option 3: Keep using filesystem (ignore warning)
+### Set the URI for one run
 
-If you prefer to keep using the local filesystem and just suppress the warning:
+`R.start(uri=...)` is useful when a single run should use a different tracking store:
+
+```python
+from pathlib import Path
+from qlib.workflow import R
+
+tracking_uri = f"sqlite:///{Path('mlflow.db').resolve().as_posix()}"
+
+with R.start(experiment_name="train_model", uri=tracking_uri):
+    model.fit(dataset)
+    R.save_objects(trained_model=model)
+```
+
+Important: this URI is active only for that experiment context. If you later resume or query the same experiment, pass the same `uri` again or set it as the default with `qlib.init(..., exp_manager=...)` or `R.set_uri(...)`.
+
+### Ignore or suppress the warning
+
+For quick local tests, keeping the filesystem backend is usually fine. If you only want to hide the warning:
 
 ```python
 import warnings
-warnings.filterwarnings("ignore", category=FutureWarning, module="mlflow.tracking._tracking_service.utils")
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*Filesystem tracking backend.*",
+    category=FutureWarning,
+    module="mlflow.tracking._tracking_service.utils",
+)
 ```
 
-## Why This Happens
+This only suppresses the message. It does not change where Qlib stores experiment metadata.
 
-MLflow is gradually phasing out filesystem-based tracking backends in favor of database backends (SQLite, MySQL, PostgreSQL) for better performance, reliability, and concurrent access support. The warning alerts users to this upcoming change.
+## Code References
 
-## Summary
+- [`qlib/config.py`](https://github.com/microsoft/qlib/blob/main/qlib/config.py): default `exp_manager` and default MLflow URI.
+- [`qlib/workflow/__init__.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/__init__.py): `R.start(...)`, `R.set_uri(...)`, and recorder-facing APIs.
+- [`qlib/workflow/expm.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/expm.py): `ExpManager.default_uri`, active URI handling, and `MLflowExpManager`.
 
-The warning is harmless for now — your existing `./mlruns` setup will continue working. To future-proof your code, switch to SQLite using either configuration method above.
+## Practical Recommendation
+
+Use `qlib.init(..., exp_manager=...)` for scripts and notebooks that you plan to rerun. Use `R.start(uri=...)` only when you intentionally want one experiment context to write somewhere else. Suppress the warning only for throwaway runs.
