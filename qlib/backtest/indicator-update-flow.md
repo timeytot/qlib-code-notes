@@ -183,7 +183,7 @@ Indicator.record(trade_start_time)
 
 ---
 
-# 4. Path 1: atomic=True
+# 4. Path 1: `atomic=True`
 
 `atomic=True` means the current executor is the lowest-level executor.
 
@@ -326,7 +326,7 @@ SH600001      -500     -500           -300          20.00         -6000         
 
 ---
 
-# 5. Path 2: atomic=False
+# 5. Path 2: `atomic=False`
 
 `atomic=False` means the current executor is an outer nested executor.
 
@@ -950,8 +950,8 @@ SH600000      10.00
 SH600001      20.00
 
 base_volume:
-SH600000      1
-SH600001      1
+SH600000      1000
+SH600001       500
 ```
 
 ### step1
@@ -962,8 +962,8 @@ SH600000      10.10
 SH600001      19.90
 
 base_volume:
-SH600000      1
-SH600001      1
+SH600000      3000
+SH600001       500
 ```
 
 ### step2
@@ -974,8 +974,8 @@ SH600000      10.20
 SH600001      19.80
 
 base_volume:
-SH600000      1
-SH600001      1
+SH600000      6000
+SH600001      1000
 ```
 
 After concatenating along `axis=1`, Qlib gets two matrices:
@@ -992,8 +992,8 @@ SH600001      20.00     19.90     19.80
 bv_all_multi_data:
 
               step0     step1     step2
-SH600000        1         1         1
-SH600001        1         1         1
+SH600000      1000      3000      6000
+SH600001       500       500      1000
 ```
 
 Here:
@@ -1003,9 +1003,14 @@ rows    = instruments
 columns = inner steps
 ```
 
+`bv_all_multi_data` is the inner-step base volume matrix.
+It is the actual weight matrix used in the element-wise multiplication with `bp_all_multi_data`.
+
 ---
 
 ### Calculating `base_volume`
+
+The outer-level `base_volume` is calculated by summing `bv_all_multi_data` row by row:
 
 ```text
 base_volume = bv_all_multi_data.sum(axis=1)
@@ -1015,58 +1020,201 @@ base_volume = bv_all_multi_data.sum(axis=1)
 
 ```text
 SH600000:
-1 + 1 + 1 = 3
+1000 + 3000 + 6000 = 10000
 
 SH600001:
-1 + 1 + 1 = 3
+500 + 500 + 1000 = 2000
 ```
 
 Result:
 
 ```text
 base_volume:
-SH600000      3
-SH600001      3
+SH600000      10000
+SH600001       2000
+```
+
+Important distinction:
+
+```text
+bv_all_multi_data
+    Matrix of base_volume values for each inner step.
+    It is used as the element-wise weight matrix.
+
+base_volume
+    Final aggregated outer-level base_volume.
+    It equals bv_all_multi_data.sum(axis=1).
+    It is used as the denominator when calculating outer-level base_price.
 ```
 
 ---
 
 ### Calculating `base_price`
 
+Strictly speaking, the source formula should not be written as:
+
 ```text
 base_price = sum(base_price * base_volume) / sum(base_volume)
 ```
 
+That expression is easy to misunderstand because `base_volume` may refer to two different things.
+
+The actual source logic is:
+
+```python
+base_volume = bv_all_multi_data.sum(axis=1)
+
+self.order_indicator.assign(
+    "base_price",
+    ((bp_all_multi_data * bv_all_multi_data).sum(axis=1) / base_volume).to_dict(),
+)
+```
+
+So the accurate formula is:
+
+```text
+base_volume = bv_all_multi_data.sum(axis=1)
+
+base_price = (
+    (bp_all_multi_data * bv_all_multi_data).sum(axis=1)
+    / base_volume
+)
+```
+
+In mathematical form, for each instrument:
+
+```text
+outer_base_volume = sum(inner_base_volume_i)
+
+outer_base_price =
+    sum(inner_base_price_i * inner_base_volume_i)
+    / sum(inner_base_volume_i)
+```
+
+The important point is:
+
+```text
+bp_all_multi_data is multiplied by bv_all_multi_data,
+not by the already aggregated outer-level base_volume.
+```
+
+The final `base_volume` is only used as the denominator.
+
+---
+
+### Matrix Calculation Example
+
 For `SH600000`:
 
 ```text
-base_price
-= (10.00 * 1 + 10.10 * 1 + 10.20 * 1) / 3
-= 10.10
+bp_all_multi_data:
+
+              step0     step1     step2
+SH600000      10.00     10.10     10.20
+```
+
+```text
+bv_all_multi_data:
+
+              step0     step1     step2
+SH600000      1000      3000      6000
+```
+
+First calculate the aggregated outer-level `base_volume`:
+
+```text
+base_volume = 1000 + 3000 + 6000 = 10000
+```
+
+Then calculate the weighted numerator:
+
+```text
+(bp_all_multi_data * bv_all_multi_data).sum(axis=1)
+
+= 10.00 * 1000 + 10.10 * 3000 + 10.20 * 6000
+= 10000 + 30300 + 61200
+= 101500
+```
+
+Finally:
+
+```text
+base_price = 101500 / 10000 = 10.15
 ```
 
 For `SH600001`:
 
 ```text
-base_price
-= (20.00 * 1 + 19.90 * 1 + 19.80 * 1) / 3
-= 19.90
+bp_all_multi_data:
+
+              step0     step1     step2
+SH600001      20.00     19.90     19.80
+```
+
+```text
+bv_all_multi_data:
+
+              step0     step1     step2
+SH600001       500       500      1000
+```
+
+First calculate the aggregated outer-level `base_volume`:
+
+```text
+base_volume = 500 + 500 + 1000 = 2000
+```
+
+Then calculate the weighted numerator:
+
+```text
+(bp_all_multi_data * bv_all_multi_data).sum(axis=1)
+
+= 20.00 * 500 + 19.90 * 500 + 19.80 * 1000
+= 10000 + 9950 + 19800
+= 39750
+```
+
+Finally:
+
+```text
+base_price = 39750 / 2000 = 19.875
 ```
 
 Result:
 
 ```text
 base_price:
-SH600000      10.10
-SH600001      19.90
+SH600000      10.15
+SH600001      19.875
 ```
 
 Result after `_agg_base_price()`:
 
 ```text
               amount   inner_amount   deal_amount   trade_price   base_price   base_volume   ffr
-SH600000      1200     1000           1000          10.10         10.10        3             0.8333
-SH600001      -500     -500           -300          19.90         19.90        3             0.6
+SH600000      1200     1000           1000          10.10         10.15        10000         0.8333
+SH600001      -500     -500           -300          19.90         19.875       2000          0.6
+```
+
+Therefore, the precise explanation is:
+
+```text
+The outer-level base_price is the weighted average of all inner-step base_price values,
+where each inner-step base_price is weighted by its corresponding inner-step base_volume.
+```
+
+It is not:
+
+```text
+base_price * final aggregated base_volume
+```
+
+Instead, it is:
+
+```text
+inner base_price matrix * inner base_volume matrix
+then row-wise sum
+then divide by the aggregated outer base_volume
 ```
 
 ---
@@ -1213,14 +1361,14 @@ sign = 1 - 0 * 2 = 1
 ```text
 trade_dir   = BUY
 trade_price = 10.05
-base_price  = 10.10
+base_price  = 10.15
 ```
 
 Calculation:
 
 ```text
-pa = -1 * (10.05 / 10.10 - 1)
-   = 0.00495
+pa = -1 * (10.05 / 10.15 - 1)
+   = 0.00985
 ```
 
 The buy price is lower than the baseline price, so `pa` is positive.
@@ -1232,14 +1380,14 @@ The buy price is lower than the baseline price, so `pa` is positive.
 ```text
 trade_dir   = SELL
 trade_price = 20.10
-base_price  = 19.90
+base_price  = 19.875
 ```
 
 Calculation:
 
 ```text
-pa = 1 * (20.10 / 19.90 - 1)
-   = 0.01005
+pa = 1 * (20.10 / 19.875 - 1)
+   = 0.01132
 ```
 
 The sell price is higher than the baseline price, so `pa` is positive.
@@ -1264,8 +1412,8 @@ Example final `order_indicator`:
 
 ```text
               amount   inner_amount   deal_amount   trade_price   trade_value   trade_cost   trade_dir   ffr      base_price   base_volume   pa
-SH600000      1200     1000           1000          10.05         10050         6            BUY         0.8333   10.10        3             0.00495
-SH600001      -500     -500           -300          20.10         -6030         6            SELL        0.6      19.90        3             0.01005
+SH600000      1200     1000           1000          10.05         10050         6            BUY         0.8333   10.15        10000         0.00985
+SH600001      -500     -500           -300          20.10         -6030         6            SELL        0.6      19.875       2000          0.01132
 ```
 
 ---
@@ -1298,8 +1446,8 @@ order_indicator["pa"]
 Default method is mean:
 
 ```text
-pa = mean([0.00495, 0.01005])
-   = 0.00750
+pa = mean([0.00985, 0.01132])
+   = 0.010585
 ```
 
 ---
@@ -1401,15 +1549,15 @@ These histories are later used to generate indicator DataFrames.
 
 ```text
               amount   inner_amount   deal_amount   trade_price   trade_value   trade_cost   trade_dir   ffr      base_price   base_volume   pa
-SH600000      1200     1000           1000          10.05         10050         6            BUY         0.8333   10.10        3             0.00495
-SH600001      -500     -500           -300          20.10         -6030         6            SELL        0.6      19.90        3             0.01005
+SH600000      1200     1000           1000          10.05         10050         6            BUY         0.8333   10.15        10000         0.00985
+SH600001      -500     -500           -300          20.10         -6030         6            SELL        0.6      19.875       2000          0.01132
 ```
 
 ## 8.2 Final `trade_indicator`
 
 ```text
 ffr          0.71665
-pa           0.00750
+pa           0.010585
 pos          1.0
 deal_amount  1300
 value        16080
@@ -1546,25 +1694,33 @@ ffr
 
 base_price
     Source:
-        inner base_price/base_volume
+        inner base_price matrix: bp_all_multi_data
+        inner base_volume matrix: bv_all_multi_data
         or trade_exchange when missing
     Created by:
         _agg_base_price()
     Calculation:
-        sum(base_price * base_volume) / sum(base_volume)
+        base_volume = bv_all_multi_data.sum(axis=1)
+
+        base_price =
+            (bp_all_multi_data * bv_all_multi_data).sum(axis=1)
+            / base_volume
     Meaning:
-        Baseline market price.
+        Outer-level baseline market price.
+        It is the weighted average of inner-step base_price values,
+        weighted by each inner step's base_volume.
 
 base_volume
     Source:
-        inner base_volume
+        inner base_volume values from each inner step,
         or trade_exchange when missing
     Created by:
         _agg_base_price()
     Calculation:
-        sum(inner base_volume)
+        bv_all_multi_data.sum(axis=1)
     Meaning:
-        Weight for aggregating base_price.
+        Aggregated outer-level baseline volume.
+        It is the denominator used when calculating outer-level base_price.
 
 pa
     Source:
@@ -1616,6 +1772,10 @@ The atomic=False flow is:
 4. _agg_base_price()
     Aggregates baseline market prices:
     base_price / base_volume
+
+    Important:
+        bp_all_multi_data is multiplied by bv_all_multi_data.
+        The aggregated base_volume is only the denominator.
 
 5. _agg_order_price_advantage()
     Calculates:
