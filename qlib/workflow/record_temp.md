@@ -1,4 +1,4 @@
-# `get_path` Class Method Explanation
+# Qlib Workflow Record Templates: Paths and Dependency Checks
 
 **Source file**: [qlib/workflow/record_temp.py#L40](https://github.com/microsoft/qlib/blob/2fb9380b342556ddb50a4b24e4fe8655d548b2b8/qlib/workflow/record_temp.py#L40)
 
@@ -83,13 +83,13 @@ For example, the directory structure formed in an MLflow recorder might look lik
 
 ```
 recorder/
-├── sig_analysis/
-│   ├── ic.pkl
-│   ├── ric.pkl
-│   └── long_pre.pkl
-└── portfolio_analysis/
-    ├── report_normal_day.pkl
-    └── port_analysis_day.pkl
+|--- sig_analysis/
+|   |--- ic.pkl
+|   |--- ric.pkl
+|   `--- long_pre.pkl
+`--- portfolio_analysis/
+    |--- report_normal_day.pkl
+    `--- port_analysis_day.pkl
 ```
 
 # `check` Method Explanation
@@ -174,10 +174,10 @@ record.check(include_self=True)
 # Execution process:
 # 1. Get SigAnaRecord.list() = ["ic.pkl", "ric.pkl"]
 # 2. For each artifact:
-#    - "ic.pkl" → get_path("ic.pkl") = "sig_analysis/ic.pkl"
+#    - "ic.pkl" -> get_path("ic.pkl") = "sig_analysis/ic.pkl"
 #      dirn = "sig_analysis"
 #      Check if "sig_analysis/ic.pkl" exists in the recorder
-#    - "ric.pkl" → similarly checked
+#    - "ric.pkl" -> similarly checked
 ```
 
 #### Scenario 2: Checking Self and Dependent Class
@@ -217,7 +217,7 @@ filename = ps[-1]  # "ic.pkl"
 ```python
 class SigAnaRecord(ACRecordTemp):
     artifact_path = "sig_analysis"
-    depend_cls = SignalRecord  # ← Depends on SignalRecord, not a parent class!
+    depend_cls = SignalRecord  # <- Depends on SignalRecord, not a parent class!
 ```
 
 ### Corrected Execution Flow
@@ -247,7 +247,7 @@ record.check(include_self=True, parents=True)
 ```python
 # Without caching, each loop iteration would request the recorder
 for item in self.list():
-    artifacts_dir = self.recorder.list_artifacts(dirn)  # Redundant requests ❌
+    artifacts_dir = self.recorder.list_artifacts(dirn)  # Redundant requests NOT OK
     if self.get_path(item) not in artifacts_dir:
         raise FileNotFoundError
 
@@ -255,7 +255,7 @@ for item in self.list():
 artifacts = {}
 def _get_arts(dirn):
     if dirn not in artifacts:
-        artifacts[dirn] = self.recorder.list_artifacts(dirn)  # Only one request ✅
+        artifacts[dirn] = self.recorder.list_artifacts(dirn)  # Only one request OK
     return artifacts[dirn]
 ```
 
@@ -462,17 +462,17 @@ artifact_objects.update({f"indicator_analysis_{_analysis_freq}.pkl": analysis_df
 
 ```
 recorder/
-└── portfolio_analysis/                          # artifact_path = "portfolio_analysis"
-    ├── port_analysis_day.pkl                     # Risk analysis results (DataFrame)
-    ├── port_analysis_30min.pkl                   # (if 30min frequency is available)
-    ├── indicator_analysis_day.pkl                 # Indicator statistics results (DataFrame)
-    ├── indicator_analysis_30min.pkl               # (if 30min frequency is available)
-    ├── report_normal_day.pkl                      # Backtest report (DataFrame)
-    ├── report_normal_30min.pkl                    # (if 30min frequency is available)
-    ├── positions_normal_day.pkl                   # Position records (dict)
-    ├── positions_normal_30min.pkl                 # (if 30min frequency is available)
-    ├── indicators_normal_day.pkl                   # Trade indicators DataFrame
-    ├── indicators_normal_day_obj.pkl               # Complete Indicator object
-    ├── indicators_normal_30min.pkl                 # 30min trade indicators DataFrame
-    └── indicators_normal_30min_obj.pkl             # Complete 30min Indicator object
+`--- portfolio_analysis/                          # artifact_path = "portfolio_analysis"
+    |--- port_analysis_day.pkl                     # Risk analysis results (DataFrame)
+    |--- port_analysis_30min.pkl                   # (if 30min frequency is available)
+    |--- indicator_analysis_day.pkl                 # Indicator statistics results (DataFrame)
+    |--- indicator_analysis_30min.pkl               # (if 30min frequency is available)
+    |--- report_normal_day.pkl                      # Backtest report (DataFrame)
+    |--- report_normal_30min.pkl                    # (if 30min frequency is available)
+    |--- positions_normal_day.pkl                   # Position records (dict)
+    |--- positions_normal_30min.pkl                 # (if 30min frequency is available)
+    |--- indicators_normal_day.pkl                   # Trade indicators DataFrame
+    |--- indicators_normal_day_obj.pkl               # Complete Indicator object
+    |--- indicators_normal_30min.pkl                 # 30min trade indicators DataFrame
+    `--- indicators_normal_30min_obj.pkl             # Complete 30min Indicator object
 ```

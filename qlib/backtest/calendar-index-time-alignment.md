@@ -1,4 +1,4 @@
-# Qlib Calendar, Time, and Index Alignment
+# Qlib Backtest Calendar, Time, and Index Alignment
 
 ## Core Idea
 
@@ -66,15 +66,15 @@ Meaning:
 
 ```text
 backtest(start_time, end_time)
-    ↓
+    v
 get_strategy_executor(...)
-    ↓
+    v
 create Account
 create Exchange
 create CommonInfrastructure
 create Strategy
 create Executor
-    ↓
+    v
 backtest_loop(...)
 ```
 
@@ -84,10 +84,10 @@ Important distinction:
 start_time / end_time are used in two different places:
 
 1. Executor calendar
-   → controls when the executor steps
+   -> controls when the executor steps
 
 2. Exchange quote window
-   → controls what market data can be queried
+   -> controls what market data can be queried
 ```
 
 ---
@@ -138,9 +138,9 @@ Meaning:
 
 ```text
 get_exchange(...)
-    ↓
+    v
 Exchange(freq, start_time, end_time, codes, deal_price)
-    ↓
+    v
 Exchange quote data window
 ```
 
@@ -197,11 +197,11 @@ Meaning:
 
 ```text
 Exchange.start_time / end_time
-    ↓
+    v
 D.features(...)
-    ↓
+    v
 Exchange.quote_df
-    ↓
+    v
 Exchange.quote
 ```
 
@@ -249,11 +249,11 @@ Meaning:
 
 ```text
 executor.reset(start_time, end_time)
-    ↓
+    v
 executor.level_infra.reset_cal(...)
-    ↓
+    v
 TradeCalendarManager is created or reset
-    ↓
+    v
 executor.trade_calendar becomes available
 ```
 
@@ -365,15 +365,15 @@ Meaning:
 
 ```text
 collect_data_loop()
-    ↓
+    v
 trade_executor.reset(start_time, end_time)
-    ↓
+    v
 executor creates trade_calendar
-    ↓
+    v
 trade_strategy.reset(level_infra=trade_executor.get_level_infra())
-    ↓
+    v
 strategy receives executor's LevelInfrastructure
-    ↓
+    v
 strategy.generate_trade_decision(...)
 ```
 
@@ -441,9 +441,9 @@ Meaning:
 
 ```text
 trade_strategy.reset(level_infra=trade_executor.get_level_infra())
-    ↓
+    v
 strategy.level_infra = executor.level_infra
-    ↓
+    v
 strategy.trade_calendar
     = strategy.level_infra.get("trade_calendar")
     = executor.level_infra.get("trade_calendar")
@@ -493,11 +493,11 @@ Meaning:
 
 ```text
 executor current step
-    ↓
+    v
 strategy uses executor calendar through level_infra
-    ↓
+    v
 strategy.generate_trade_decision(...)
-    ↓
+    v
 BaseTradeDecision / TradeDecisionWO
 ```
 
@@ -530,7 +530,7 @@ Meaning:
 
 ```text
 strategy.trade_calendar.get_step_time()
-    ↓
+    v
 decision.start_time
 decision.end_time
 ```
@@ -581,8 +581,8 @@ Meaning:
 
 ```text
 strategy.trade_calendar.get_step_time()
-    ├─ decision.start_time / decision.end_time
-    └─ order.start_time / order.end_time
+    |-- decision.start_time / decision.end_time
+    `-- order.start_time / order.end_time
 ```
 
 Important detail:
@@ -636,15 +636,15 @@ Meaning:
 
 ```text
 executor.collect_data(decision)
-    ↓
+    v
 executor._collect_data(decision)
-    ↓
+    v
 execute orders or run nested executor
-    ↓
+    v
 get executor current step time
-    ↓
+    v
 Account.update_bar_end(...)
-    ↓
+    v
 executor.trade_calendar.step()
 ```
 
@@ -685,11 +685,11 @@ Meaning:
 
 ```text
 TradeDecisionWO
-    ↓
+    v
 order_list
-    ↓
+    v
 SimulatorExecutor
-    ↓
+    v
 Exchange.deal_order(order)
 ```
 
@@ -765,9 +765,9 @@ order.stock_id
 order.start_time
 order.end_time
 order.direction
-    ↓
+    v
 Exchange.get_deal_price(...)
-    ↓
+    v
 Quote.get_data(...)
 ```
 
@@ -811,23 +811,23 @@ Meaning:
 
 ```text
 Quote data
-    ↓
+    v
 stock_id
 start_time
 end_time
 field
 method
-    ↓
+    v
 self.data[stock_id].loc[start_time:end_time, field]
 ```
 
 Common methods:
 
 ```text
-ts_data_last  → last non-NaN value
-sum           → sum over time range
-all           → all values are True
-None          → return time series / IndexData
+ts_data_last  -> last non-NaN value
+sum           -> sum over time range
+all           -> all values are True
+None          -> return time series / IndexData
 ```
 
 ---
@@ -875,9 +875,9 @@ Meaning:
 
 ```text
 executor current step time
-    ↓
+    v
 Account.update_bar_end(...)
-    ↓
+    v
 update current position price
 update account value
 update portfolio metrics
@@ -893,54 +893,54 @@ update trade indicators
 qlib/backtest/__init__.py
 
 backtest(start_time, end_time, strategy, executor, ...)
-    ↓
+    v
 get_strategy_executor(...)
-    ↓
+    v
 create Account
 create Exchange
 create CommonInfrastructure
 create Strategy
 create Executor
-    ↓
+    v
 backtest_loop(...)
 
 qlib/backtest/backtest.py
 
 collect_data_loop(...)
-    ↓
+    v
 trade_executor.reset(start_time, end_time)
-    ↓
+    v
 executor.level_infra.reset_cal(...)
-    ↓
+    v
 executor.trade_calendar is available
-    ↓
+    v
 trade_strategy.reset(level_infra=trade_executor.get_level_infra())
-    ↓
+    v
 strategy.level_infra = executor.level_infra
-    ↓
+    v
 strategy.trade_calendar reads executor calendar from level_infra
-    ↓
+    v
 while not executor.finished():
-    ↓
+    v
     strategy.generate_trade_decision(...)
-        ↓
+        v
         BaseTradeDecision records current step time
-        ↓
+        v
         TradeDecisionWO fills order start/end
-    ↓
+    v
     executor.collect_data(decision)
-        ↓
+        v
         SimulatorExecutor._collect_data(decision)
-            ↓
+            v
             Exchange.deal_order(order)
-                ↓
+                v
                 Exchange checks tradability
                 Exchange gets deal price
                 Quote slices market data
                 Account updates order result
-        ↓
+        v
         Account.update_bar_end(...)
-        ↓
+        v
         executor.trade_calendar.step()
 ```
 
@@ -978,13 +978,13 @@ Meaning:
 
 ```text
 outer executor current step
-    ↓
+    v
 outer trade_start_time / trade_end_time
-    ↓
+    v
 inner_executor.reset(start_time=outer_step_start, end_time=outer_step_end)
-    ↓
+    v
 inner executor calendar
-    ↓
+    v
 inner strategy receives inner executor level_infra
 ```
 
@@ -1041,13 +1041,13 @@ Meaning:
 
 ```text
 TradeRangeByTime("09:35", "14:50")
-    ↓
+    v
 use inner_calendar.start_time.date()
-    ↓
+    v
 2026-03-31 09:35 ~ 2026-03-31 14:50
-    ↓
+    v
 inner_calendar.get_range_idx(...)
-    ↓
+    v
 inner start_idx / end_idx
 ```
 
@@ -1078,9 +1078,9 @@ Meaning:
 
 ```text
 outer decision
-    ↓
+    v
 update(inner_calendar)
-    ↓
+    v
 decision.total_step = inner_calendar.get_trade_len()
 ```
 
@@ -1120,9 +1120,9 @@ Meaning:
 
 ```text
 trade_range calculates raw start_idx / end_idx
-    ↓
+    v
 if total_step is available
-    ↓
+    v
 clip range into [0, total_step - 1]
 ```
 
@@ -1174,11 +1174,11 @@ Meaning:
 
 ```text
 for each inner executor step:
-    ↓
+    v
 update outer decision with inner calendar
-    ↓
+    v
 convert outer decision trade_range to inner index range
-    ↓
+    v
 if current inner step is inside range:
         run inner strategy
         run inner executor
@@ -1242,13 +1242,13 @@ Meaning:
 
 ```text
 decision time range
-    ↓
+    v
 trade_range.clip_time_range(...)
-    ↓
+    v
 Cal.locate_index(...)
-    ↓
+    v
 global data calendar index
-    ↓
+    v
 convert to intraday relative data index
 ```
 
@@ -1258,10 +1258,10 @@ Important distinction:
 
 ```text
 get_range_limit(...)
-    → executor calendar index
+    -> executor calendar index
 
 get_data_cal_range_limit(...)
-    → global data calendar Cal index converted to daily relative index
+    -> global data calendar Cal index converted to daily relative index
 ```
 
 ---
@@ -1292,11 +1292,11 @@ Meaning:
 
 ```text
 strategy current step time
-    ↓
+    v
 signal.get_signal(start_time, end_time)
-    ↓
+    v
 resample signal_cache
-    ↓
+    v
 use the last available signal inside this step
 ```
 
@@ -1431,14 +1431,14 @@ For daily live trading, focus first on these three alignments:
 
 ```text
 1. Qlib trade date
-   → executor.trade_calendar current step
+   -> executor.trade_calendar current step
 
 2. Strategy current step
-   → signal.get_signal(start_time, end_time)
+   -> signal.get_signal(start_time, end_time)
 
 3. Order start/end
-   → Exchange / quote price query
-   → later mapped to miniQMT order generation
+   -> Exchange / quote price query
+   -> later mapped to miniQMT order generation
 ```
 
 Usually not the first priority for daily live trading:
@@ -1455,17 +1455,17 @@ Daily live trading main path:
 
 ```text
 miniQMT real account
-    ↓
+    v
 convert cash / positions into Qlib Account / Position
-    ↓
+    v
 Qlib strategy reads current step signal
-    ↓
+    v
 generate target position / dry-run orders
-    ↓
+    v
 compare with miniQMT current position
-    ↓
+    v
 generate real miniQMT orders
-    ↓
+    v
 send orders through miniQMT
 ```
 

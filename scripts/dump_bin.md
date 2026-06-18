@@ -1,8 +1,8 @@
-# Source: `qlib/scripts/dump_bin.py`
+# Qlib Data Dump Script: scripts/dump_bin.py
 
 ## `read_as_df()` Function Explanation
 
-This note explains the `read_as_df()` helper function in `qlib/scripts/dump_bin.py`.
+This note explains the `read_as_df()` helper function in `scripts/dump_bin.py`.
 
 ```python
 def read_as_df(file_path: Union[str, Path], **kwargs) -> pd.DataFrame:
@@ -376,7 +376,7 @@ Only safe parameters are passed to pandas.
 
 # qlib_crypto_dump_bin_pipeline_notes
 
-Source: `qlib/scripts/dump_bin.py`
+Source: `scripts/dump_bin.py`
 
 This note summarizes the data conversion pipeline in Qlib's `dump_bin.py`.
 
@@ -388,21 +388,21 @@ The final Qlib data directory looks like this:
 
 ```text
 qlib_data/
-├── calendars/
-│   └── day.txt
-├── instruments/
-│   └── all.txt
-└── features/
-    ├── btcusdt/
-    │   ├── open.day.bin
-    │   ├── high.day.bin
-    │   ├── low.day.bin
-    │   ├── close.day.bin
-    │   └── volume.day.bin
-    └── ethusdt/
-        ├── open.day.bin
-        ├── close.day.bin
-        └── volume.day.bin
+|--- calendars/
+|   `--- day.txt
+|--- instruments/
+|   `--- all.txt
+`--- features/
+    |--- btcusdt/
+    |   |--- open.day.bin
+    |   |--- high.day.bin
+    |   |--- low.day.bin
+    |   |--- close.day.bin
+    |   `--- volume.day.bin
+    `--- ethusdt/
+        |--- open.day.bin
+        |--- close.day.bin
+        `--- volume.day.bin
 ```
 
 ---
@@ -410,7 +410,7 @@ qlib_data/
 ## 1. Example dump command
 
 ```bash
-python dump_bin.py dump_all \
+python scripts/dump_bin.py dump_all \
   --data_path raw_data/1d_nor \
   --qlib_dir qlib_data \
   --freq day \
@@ -491,9 +491,9 @@ Example:
 
 ```text
 raw_data/1d_nor/
-├── BTCUSDT.csv
-├── ETHUSDT.csv
-└── SOLUSDT.csv
+|--- BTCUSDT.csv
+|--- ETHUSDT.csv
+`--- SOLUSDT.csv
 ```
 
 Then:
@@ -799,23 +799,23 @@ Overall flow:
 
 ```text
 _dump_all
-    │
-    ├─ _get_all_date()
-    │     ├─ Scan all csv/parquet files
-    │     ├─ Collect all dates
-    │     └─ Collect start/end date for each symbol
-    │
-    ├─ _dump_calendars()
-    │     └─ Generate calendars/day.txt
-    │
-    ├─ _dump_instruments()
-    │     └─ Generate instruments/all.txt
-    │
-    └─ _dump_features()
-          ├─ Iterate through each symbol file
-          ├─ Read full market data DataFrame
-          ├─ Align data to the global calendar
-          └─ Write each field into a .bin file
+    |
+    |-- _get_all_date()
+    |     |-- Scan all csv/parquet files
+    |     |-- Collect all dates
+    |     `-- Collect start/end date for each symbol
+    |
+    |-- _dump_calendars()
+    |     `-- Generate calendars/day.txt
+    |
+    |-- _dump_instruments()
+    |     `-- Generate instruments/all.txt
+    |
+    `-- _dump_features()
+          |-- Iterate through each symbol file
+          |-- Read full market data DataFrame
+          |-- Align data to the global calendar
+          `-- Write each field into a .bin file
 ```
 
 ---
@@ -832,21 +832,21 @@ The processing flow is:
 
 ```text
 BTCUSDT.csv
-    ↓
+    v
 Read into DataFrame
-    ↓
+    v
 Extract code = btcusdt
-    ↓
+    v
 Drop duplicate dates
-    ↓
+    v
 Create features/btcusdt/
-    ↓
+    v
 Align to the global calendar
-    ↓
+    v
 Calculate date_index
-    ↓
+    v
 Iterate through fields: open/high/low/close/volume
-    ↓
+    v
 Write each field into a separate .bin file
 ```
 
@@ -875,19 +875,19 @@ The main pipeline can be summarized as:
 
 ```text
 raw_data/*.csv
-    ↓
+    v
 Scan file list
-    ↓
+    v
 Generate global calendar
-    ↓
+    v
 Generate instruments/all.txt
-    ↓
+    v
 Read market data symbol by symbol
-    ↓
+    v
 Align each symbol to the global calendar
-    ↓
+    v
 Write each field into .bin files
-    ↓
+    v
 qlib_data/
 ```
 

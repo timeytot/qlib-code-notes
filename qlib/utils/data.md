@@ -1,4 +1,6 @@
-## `deepcopy_basic_type` Function – Full Data Shape Before & After
+# Qlib Utils Data: deepcopy_basic_type and robust_zscore
+
+## `deepcopy_basic_type` Function - Full Data Shape Before & After
 
 https://github.com/microsoft/qlib/blob/main/qlib/utils/data.py#L38
 
@@ -33,18 +35,18 @@ Memory layout (simplified):
 
 ```
 config @ 0xA (dict)
-├── "topk" → 50 @ 0xB (int)
-├── "n_drop" → 5 @ 0xC (int)
-├── "signal" → model @ 0xD (shared object)
-├── "params" → dict @ 0xE
-│   ├── "horizon" → 5 @ 0xF (int)
-│   └── "alpha" → 0.9 @ 0x10 (float)
-├── "labels" → list @ 0x11
-│   ├── 0 → str @ 0x12
-│   └── 1 → str @ 0x13
-└── "extra" → tuple @ 0x14
-    ├── 0 → 1.0 @ 0x15 (float)
-    └── 1 → 2.0 @ 0x16 (float)
+|--- "topk" -> 50 @ 0xB (int)
+|--- "n_drop" -> 5 @ 0xC (int)
+|--- "signal" -> model @ 0xD (shared object)
+|--- "params" -> dict @ 0xE
+|   |--- "horizon" -> 5 @ 0xF (int)
+|   `--- "alpha" -> 0.9 @ 0x10 (float)
+|--- "labels" -> list @ 0x11
+|   |--- 0 -> str @ 0x12
+|   `--- 1 -> str @ 0x13
+`--- "extra" -> tuple @ 0x14
+    |--- 0 -> 1.0 @ 0x15 (float)
+    `--- 1 -> 2.0 @ 0x16 (float)
 ```
 
 ### After `new_config = deepcopy_basic_type(config)`
@@ -70,18 +72,18 @@ Memory layout after copy (simplified):
 
 ```
 new_config @ 0x100 (NEW dict)
-├── "topk" → 50 @ 0xB (same as original)
-├── "n_drop" → 5 @ 0xC (same)
-├── "signal" → model @ 0xD (same object!)
-├── "params" → NEW dict @ 0x101
-│   ├── "horizon" → 5 @ 0xF (shared)
-│   └── "alpha" → 0.9 @ 0x10 (shared)
-├── "labels" → NEW list @ 0x102
-│   ├── 0 → str @ 0x12 (shared)
-│   └── 1 → str @ 0x13 (shared)
-└── "extra" → NEW tuple @ 0x103
-    ├── 0 → 1.0 @ 0x15 (shared)
-    └── 1 → 2.0 @ 0x16 (shared)
+|--- "topk" -> 50 @ 0xB (same as original)
+|--- "n_drop" -> 5 @ 0xC (same)
+|--- "signal" -> model @ 0xD (same object!)
+|--- "params" -> NEW dict @ 0x101
+|   |--- "horizon" -> 5 @ 0xF (shared)
+|   `--- "alpha" -> 0.9 @ 0x10 (shared)
+|--- "labels" -> NEW list @ 0x102
+|   |--- 0 -> str @ 0x12 (shared)
+|   `--- 1 -> str @ 0x13 (shared)
+`--- "extra" -> NEW tuple @ 0x103
+    |--- 0 -> 1.0 @ 0x15 (shared)
+    `--- 1 -> 2.0 @ 0x16 (shared)
 ```
 
 ### Summary Table: Copied vs Shared
@@ -92,24 +94,24 @@ new_config @ 0x100 (NEW dict)
 | **Nested dict ("params")** | Yes | No | Yes | Structure changes independent |
 | **Nested list ("labels")** | Yes | No | Yes | Structure changes independent |
 | **Nested tuple ("extra")** | Yes | No | Yes | Structure changes independent |
-| **Primitives (int, float, str)** | No (immutable) | Yes | No | Reassignment → no impact |
-| **Complex object (model)** | No | Yes | No | In-place changes → affects all |
+| **Primitives (int, float, str)** | No (immutable) | Yes | No | Reassignment -> no impact |
+| **Complex object (model)** | No | Yes | No | In-place changes -> affects all |
 
 ### Modification Examples
 
-**Modify primitive (int/float/str) → safe, no impact**
+**Modify primitive (int/float/str) -> safe, no impact**
 ```python
 new_config["topk"] = 30
 # config["topk"] still 50
 ```
 
-**Modify nested container → only affects new copy**
+**Modify nested container -> only affects new copy**
 ```python
 new_config["params"]["horizon"] = 10
 # config["params"]["horizon"] still 5
 ```
 
-**Modify shared mutable object → affects both**
+**Modify shared mutable object -> affects both**
 ```python
 new_config["signal"].learning_rate = 0.001
 # config["signal"].learning_rate also becomes 0.001 (same object!)
@@ -191,47 +193,47 @@ abs_dev_sorted = [0, 1, 1, 2, 7]
 mad = pd.Series(abs_dev_sorted).median()  # = 1.0
 ```
 
-✅ **MAD for this dataset = 1.0**
+OK **MAD for this dataset = 1.0**
 
 ## 3. Why Multiply by 1.4826? The Mathematical Derivation
 
-The magic number **1.4826** comes from making MAD a **consistent estimator** of the standard deviation (σ) for normally distributed data. Here's the derivation.
+The magic number **1.4826** comes from making MAD a **consistent estimator** of the standard deviation (sigma) for normally distributed data. Here's the derivation.
 
 ### Step 1: The Probabilistic Definition of MAD
 For a symmetric distribution (like the normal distribution), the population MAD is defined such that **50% of the data falls within one MAD of the center**:
 
-P(|X - μ| ≤ MAD) = 1/2
+P(|X - mu| <= MAD) = 1/2
 
 ### Step 2: Standardize the Variable
-Let Z = (X - μ)/σ ~ N(0,1), a standard normal variable. The condition becomes:
+Let Z = (X - mu)/sigma ~ N(0,1), a standard normal variable. The condition becomes:
 
-P(|Z| ≤ MAD/σ) = 1/2
+P(|Z| <= MAD/sigma) = 1/2
 
 ### Step 3: Express Probability Using CDF
-The probability |Z| ≤ a is the same as P(-a ≤ Z ≤ a). For a standard normal CDF Φ:
+The probability |Z| <= a is the same as P(-a <= Z <= a). For a standard normal CDF Phi:
 
-P(-a ≤ Z ≤ a) = Φ(a) - Φ(-a)
+P(-a <= Z <= a) = Phi(a) - Phi(-a)
 
-Using the symmetry property Φ(-a) = 1 - Φ(a), we get:
+Using the symmetry property Phi(-a) = 1 - Phi(a), we get:
 
-Φ(a) - (1 - Φ(a)) = 2Φ(a) - 1
+Phi(a) - (1 - Phi(a)) = 2Phi(a) - 1
 
 ### Step 4: Set the Probability to 1/2
-We require 2Φ(a) - 1 = 1/2. Solving:
+We require 2Phi(a) - 1 = 1/2. Solving:
 
-2Φ(a) = 3/2  ⇒  Φ(a) = 3/4
+2Phi(a) = 3/2  =>  Phi(a) = 3/4
 
 ### Step 5: Find the Quantile
-Thus, a = Φ⁻¹(3/4). The 75th percentile of the standard normal distribution is:
+Thus, a = Phi⁻¹(3/4). The 75th percentile of the standard normal distribution is:
 
-Φ⁻¹(0.75) ≈ 0.67449
+Phi⁻¹(0.75) ~= 0.67449
 
-### Step 6: Relate a to MAD and σ
-Since a = MAD/σ, we have:
+### Step 6: Relate a to MAD and sigma
+Since a = MAD/sigma, we have:
 
-MAD/σ = 0.67449  ⇒  MAD = 0.67449 · σ
+MAD/sigma = 0.67449  =>  MAD = 0.67449 · sigma
 
 ### Step 7: Solve for the Scale Factor k
-To estimate σ from MAD, we want σ̂ = k · MAD. Substituting:
+To estimate sigma from MAD, we want sigmâ = k · MAD. Substituting:
 
-σ = MAD / 0.67449  ⇒  k = 1 / 0.67449 ≈ 1.4826
+sigma = MAD / 0.67449  =>  k = 1 / 0.67449 ~= 1.4826

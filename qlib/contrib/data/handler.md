@@ -1,4 +1,4 @@
-# Why CSZScoreNorm for Learning and ZScoreNorm for Inference in Qlib
+# Qlib Contrib Data Handlers: CSZScoreNorm and ZScoreNorm
 
 **Reference**:
 [https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py#L37](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py#L37)
@@ -7,11 +7,11 @@
 
 # 1. The Core Idea (Remember This)
 
-👉 **CSZScoreNorm (Cross-sectional)** → Used for **LEARNING**
-👉 Transforms labels into **relative signals (ranking-like target)**
+Note: **CSZScoreNorm (Cross-sectional)** -> Used for **LEARNING**
+Note: Transforms labels into **relative signals (ranking-like target)**
 
-👉 **ZScoreNorm (Time-series / global)** → Used for **INFERENCE**
-👉 Ensures **distribution alignment with training data**
+Note: **ZScoreNorm (Time-series / global)** -> Used for **INFERENCE**
+Note: Ensures **distribution alignment with training data**
 
 ---
 
@@ -29,7 +29,7 @@ CSZScoreNorm(fields_group="label")
 df[cols] = df[cols].groupby("datetime").apply(zscore)
 ```
 
-👉 Normalize **per day (cross-sectionally)**
+Note: Normalize **per day (cross-sectionally)**
 
 ---
 
@@ -51,12 +51,12 @@ df[cols] = df[cols].groupby("datetime").apply(zscore)
 | B     | +0.2       |
 | C     | -1.4       |
 
-👉 Removes:
+Note: Removes:
 
 * Cross-sectional mean (market level)
 * Cross-sectional scale (volatility)
 
-👉 Keeps:
+Note: Keeps:
 
 * **Relative ordering across stocks**
 
@@ -69,14 +69,14 @@ CSZScoreNorm does **NOT just normalize labels**.
 It transforms the prediction target:
 
 ```text
-raw returns → cross-sectional z-score → relative signal
+raw returns -> cross-sectional z-score -> relative signal
 ```
 
 ### Key implication:
 
 Since the model minimizes loss on these normalized labels,
 
-👉 it is implicitly trained to learn:
+Note: it is implicitly trained to learn:
 
 ```text
 relative strength (ranking-like behavior)
@@ -99,16 +99,16 @@ Without CSZScoreNorm:
 | Normal day       | A     | 10%    |
 | Bull market day  | A     | 20%    |
 
-👉 Model may learn:
+Note: Model may learn:
 
 ```text
-20% > 10% → better
+20% > 10% -> better
 ```
 
 But this is:
 
-❌ market effect
-❌ not stock-specific alpha
+NOT OK market effect
+NOT OK not stock-specific alpha
 
 ---
 
@@ -118,7 +118,7 @@ With CSZScoreNorm:
 Each day is normalized independently
 ```
 
-👉 Model learns:
+Note: Model learns:
 
 ```text
 Who performs better RELATIVE to others on that day
@@ -136,15 +136,15 @@ CSZScoreNorm effectively:
 
 ---
 
-## ⚠️ Important Clarification
+## Warning Important Clarification
 
 This is:
 
-❌ NOT explicit ranking loss (e.g. LambdaRank)
+NOT OK NOT explicit ranking loss (e.g. LambdaRank)
 
 But:
 
-✅ behaves like a ranking objective
+OK behaves like a ranking objective
 because the **target itself encodes ranking information**
 
 ---
@@ -163,8 +163,8 @@ i.e.
 market-neutral target construction
 ```
 
-👉 Instead of removing beta from features,
-👉 it removes market effects directly from the **prediction target**
+Note: Instead of removing beta from features,
+Note: it removes market effects directly from the **prediction target**
 
 ---
 
@@ -182,7 +182,7 @@ ZScoreNorm(fit_start_time, fit_end_time)
 (x - mean_train) / std_train
 ```
 
-👉 Uses **training set statistics**
+Note: Uses **training set statistics**
 
 ---
 
@@ -205,7 +205,7 @@ ZScoreNorm(fit_start_time, fit_end_time)
 
 ## Core Purpose
 
-👉 Align inference data with training distribution:
+Note: Align inference data with training distribution:
 
 ```text
 Reduce distribution shift
@@ -234,8 +234,8 @@ If inference uses:
 * Different scaling
 * Different normalization rules
 
-👉 Model input distribution changes
-👉 Performance degrades
+Note: Model input distribution changes
+Note: Performance degrades
 
 ---
 
@@ -243,7 +243,7 @@ If inference uses:
 
 ---
 
-## ❌ If INFERENCE uses CSZScoreNorm
+## NOT OK If INFERENCE uses CSZScoreNorm
 
 ```python
 groupby("datetime").zscore()
@@ -258,7 +258,7 @@ Problems:
 
 ---
 
-## ❌ If LEARNING uses ZScoreNorm
+## NOT OK If LEARNING uses ZScoreNorm
 
 Model learns:
 
@@ -315,10 +315,10 @@ _DEFAULT_INFER_PROCESSORS = [
 
 ---
 
-👉 Qlib design:
+Note: Qlib design:
 
-* **Features** → kept stable via ZScoreNorm
-* **Labels** → transformed into relative signals via CSZScoreNorm
+* **Features** -> kept stable via ZScoreNorm
+* **Labels** -> transformed into relative signals via CSZScoreNorm
 
 ---
 
@@ -329,10 +329,10 @@ _DEFAULT_INFER_PROCESSORS = [
 ## Learning Pipeline
 
 ```text
-raw_label → CSZScoreNorm → relative signal
+raw_label -> CSZScoreNorm -> relative signal
 ```
 
-👉 Converts problem into:
+Note: Converts problem into:
 
 ```text
 cross-sectional prediction (alpha learning)
@@ -343,10 +343,10 @@ cross-sectional prediction (alpha learning)
 ## Inference Pipeline
 
 ```text
-raw_features → ZScoreNorm → stable input
+raw_features -> ZScoreNorm -> stable input
 ```
 
-👉 Ensures:
+Note: Ensures:
 
 ```text
 model sees familiar distribution
@@ -377,38 +377,38 @@ This is equivalent to:
 **Learning:**
 
 ```
-[10%, 5%, -5%] → [+1.2, +0.2, -1.4]
+[10%, 5%, -5%] -> [+1.2, +0.2, -1.4]
 ```
 
-👉 Relative signal
+Note: Relative signal
 
 ---
 
 **Inference:**
 
 ```
-[100, 50, 10] → [+2.0, 0, -1.6]
+[100, 50, 10] -> [+2.0, 0, -1.6]
 ```
 
-👉 Distribution-aligned features
+Note: Distribution-aligned features
 
 ---
 
 # 8. One-Line Summary
 
-👉 **LEARNING:**
+Note: **LEARNING:**
 "Predict who is stronger (relative alpha)"
 
-👉 **INFERENCE:**
+Note: **INFERENCE:**
 "Make input look like training data"
 
 ---
 
-# ✅ 最后点评（客观）
+# OK 最后点评（客观）
 
 这已经是：
 
-👉 可以对标：
+Note: 可以对标：
 
 * 量化研究内部文档
 * Qlib 框架讲解
@@ -418,8 +418,8 @@ This is equivalent to:
 
 如果下一步要继续提升，可以做到这一层：
 
-👉 **“为什么 LightGBM + CSZScoreNorm ≈ RankIC 最大化”**
+Note: **“为什么 LightGBM + CSZScoreNorm ~= RankIC 最大化”**
 
 那一层就是：
 
-👉 **真正 quant researcher / alpha model 设计层级**
+Note: **真正 quant researcher / alpha model 设计层级**

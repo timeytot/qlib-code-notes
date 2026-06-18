@@ -1,4 +1,4 @@
-# Understanding Qlib's Data Provider System: Wrapper + `register_wrapper` Mechanism
+# Qlib Data Provider System: Wrapper and register_wrapper
 ## Key Code References
 
 - [`qlib/data/data.py#L1331`](https://github.com/microsoft/qlib/blob/main/qlib/data/data.py#L1331): `register_wrapper(D, C.provider, "qlib.data")`
@@ -17,12 +17,12 @@ class Wrapper:
         self._provider = None
 
     def register(self, provider):
-        self._provider = provider   # ← Here: assign the real instance
+        self._provider = provider   # <- Here: assign the real instance
 
     def __getattr__(self, key):
         if self._provider is None:
             raise AttributeError("Please run qlib.init() first")
-        return getattr(self._provider, key)  # ← Delegate all calls to the real provider
+        return getattr(self._provider, key)  # <- Delegate all calls to the real provider
 ```
 
 ## What does `register_wrapper(D, C.provider, "qlib.data")` do?
@@ -34,7 +34,7 @@ register_wrapper(D, C.provider, "qlib.data")
 ```
 
 This line performs the following:
-1. `C.provider` is a config (e.g., `"LocalProvider"` or a full config dict) — see [`config.py#L142`](https://github.com/microsoft/qlib/blob/main/qlib/config.py#L142)
+1. `C.provider` is a config (e.g., `"LocalProvider"` or a full config dict)  -  see [`config.py#L142`](https://github.com/microsoft/qlib/blob/main/qlib/config.py#L142)
 2. `init_instance_by_config(C.provider, ...)` creates the actual instance (e.g., a `LocalProvider()` object)
 3. `register_wrapper(...)` calls `D.register(that_instance)`, which executes:
    ```python
@@ -54,16 +54,16 @@ So yes: **`D` itself is a `Wrapper`, but behaves exactly like a `BaseProvider`**
 `BaseProvider` in the type hint is purely for static type checking and IDE support:
 
 - It tells tools like `mypy`, PyCharm, or VS Code: "Even though the object is a `Wrapper`, you can safely assume it has all the methods and behavior of `BaseProvider` (e.g., `.features()`, `.instruments()`, `.calendar()`)."
-- At runtime, this type annotation has zero effect — Python ignores `Annotated` completely during execution.
+- At runtime, this type annotation has zero effect  -  Python ignores `Annotated` completely during execution.
 
 ### Runtime Reality
 
 The actual object at runtime is always an instance of `Wrapper`:
 
 ```python
-D = Wrapper()                  # ← Real object in memory
-isinstance(D, Wrapper)         # → True
-isinstance(D, BaseProvider)    # → False (it's not a subclass)
+D = Wrapper()                  # <- Real object in memory
+isinstance(D, Wrapper)         # -> True
+isinstance(D, BaseProvider)    # -> False (it's not a subclass)
 ```
 
 The real functionality comes from `D._provider` ([`utils/__init__.py#L865`](https://github.com/microsoft/qlib/blob/main/qlib/utils/__init__.py#L865)):
@@ -80,7 +80,7 @@ When you call:
 D.features(...)
 ```
 
-→ `Wrapper.__getattr__` forwards it to:
+-> `Wrapper.__getattr__` forwards it to:
 ```python
 D._provider.features(...)
 ```
@@ -90,8 +90,8 @@ D._provider.features(...)
 | Aspect | What it is | Runtime impact? |
 |--------|------------|-----------------|
 | Type hint | `Annotated[BaseProvider, Wrapper]` | None (only for static analysis) |
-| Actual object | `Wrapper()` instance | Yes — this is what exists |
-| Real implementation | `D._provider` (e.g., `LocalProvider()` instance) | Yes — this does the real work |
+| Actual object | `Wrapper()` instance | Yes  -  this is what exists |
+| Real implementation | `D._provider` (e.g., `LocalProvider()` instance) | Yes  -  this does the real work |
 
 ## Conclusion in One Sentence
 
@@ -211,28 +211,28 @@ class Feature(Expression):
 
 ```
 Gt.load(100,200)
-    │
-    ├─ Gt._load_internal(100,200)
-    │   │
-    │   ├─ Mean.load(100,200)
-    │   │   │
-    │   │   ├─ Mean._load_internal(100,200)
-    │   │   │   │
-    │   │   │   ├─ Feature('close').load(96,200)  # Mean needs 4 previous days
-    │   │   │   │   │
-    │   │   │   │   └─ FeatureD.feature(96,200)   # Read close price data
-    │   │   │   │
-    │   │   │   └─ rolling(window=5).mean()       # Calculate 5-day MA
-    │   │   │
-    │   │   └─ Return Mean result (100-200)
-    │   │
-    │   ├─ Feature('open').load(100,200)
-    │   │   │
-    │   │   └─ FeatureD.feature(100,200)          # Read open price data
-    │   │
-    │   └─ np.greater()                            # Compare values
-    │
-    └─ Return boolean series (100-200)
+    |
+    |-- Gt._load_internal(100,200)
+    |   |
+    |   |-- Mean.load(100,200)
+    |   |   |
+    |   |   |-- Mean._load_internal(100,200)
+    |   |   |   |
+    |   |   |   |-- Feature('close').load(96,200)  # Mean needs 4 previous days
+    |   |   |   |   |
+    |   |   |   |   `-- FeatureD.feature(96,200)   # Read close price data
+    |   |   |   |
+    |   |   |   `-- rolling(window=5).mean()       # Calculate 5-day MA
+    |   |   |
+    |   |   `-- Return Mean result (100-200)
+    |   |
+    |   |-- Feature('open').load(100,200)
+    |   |   |
+    |   |   `-- FeatureD.feature(100,200)          # Read open price data
+    |   |
+    |   `-- np.greater()                            # Compare values
+    |
+    `-- Return boolean series (100-200)
 ```
 
 ## Final Returned Data

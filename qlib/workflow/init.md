@@ -1,47 +1,47 @@
-# Deep Dive into Qlib Workflow: Core Knowledge Summary (Advanced Mastery Level)
+# Qlib Workflow: ExpManager, Experiment, Recorder, and R
 
 **Code Reference:** [`qlib/workflow/__init__.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/__init__.py) and [`qlib/workflow/expm.py`](https://github.com/microsoft/qlib/blob/main/qlib/workflow/expm.py)
 
-This summary distills an in-depth understanding of Qlib's Workflow module, based on source code analysis and discussions. It demonstrates advanced technical proficiency in quantitative frameworks, experiment management, and concurrency safety. Ideal for showcasing in resumes, interviews, or projects in AI quantization and cryptocurrency/blockchain strategies.
+This note explains Qlib's workflow layer from the public `R` facade down to `ExpManager`, `Experiment`, and `Recorder`, with emphasis on active recorder state, MLflow integration, URI handling, and concurrency behavior.
 
-## 1. Four-Layer Architecture and Responsibility Separation (ExpManager → Experiment → Recorder → R)
+## 1. Four-Layer Architecture and Responsibility Separation (ExpManager -> Experiment -> Recorder -> R)
 
 - **ExpManager** (Global Experiment Manager, Singleton): Corresponds to the entire MLflow Tracking URI. Responsibilities: create/list/delete all Experiments, manage the current `active_experiment`, maintain tracking URI (including temporary switching).
 - **Experiment** (Single Experiment Group): Corresponds to one MLflow Experiment. Responsibilities: manage all Recorders under this experiment, maintain `active_recorder`, perform `search_runs` (scoped to this experiment).
 - **Recorder** (Single Run Record): Corresponds to one MLflow Run. Provides object-oriented interfaces: `log_params/metrics`, `save_objects/load_object`, `log_artifact`, `list_artifacts`, etc.
-- **R** (QlibRecorder, Global Facade Singleton): The sole user interaction entry point. All shortcut operations (`log_metrics`, `save_objects`, `get_exp`, `start`, etc.) are performed via R, which internally routes automatically to the current `active_experiment` → `active_recorder`.
+- **R** (QlibRecorder, Global Facade Singleton): The sole user interaction entry point. All shortcut operations (`log_metrics`, `save_objects`, `get_exp`, `start`, etc.) are performed via R, which internally routes automatically to the current `active_experiment` -> `active_recorder`.
 
 ### User Code Flow
 
 ```
 User code
-   │
-   ▼
-R.start() / R.start_exp()           ← Create/acquire Experiment
-   │                                       │
-   ▼                                       ▼
+   |
+   v
+R.start() / R.start_exp()           <- Create/acquire Experiment
+   |                                       |
+   v                                       v
 Activate active_experiment          Create/acquire Recorder
-   │                                       │
-   ▼                                       ▼
-Activate active_recorder → mlflow.start_run()
-   │
-   ▼
+   |                                       |
+   v                                       v
+Activate active_recorder -> mlflow.start_run()
+   |
+   v
 User calls R.log_metrics / save_objects / etc.
-   │
-   ▼
+   |
+   v
 All operations apply to the current active_recorder
-   │
-   ▼
-with block ends or R.end_exp() → mlflow.end_run() + status marking
+   |
+   v
+with block ends or R.end_exp() -> mlflow.end_run() + status marking
 ```
 
 ## 2. Reason for Restricting to Only One `active_experiment` and `active_recorder`
 
-- Inherits and reinforces MLflow's core constraint: MLflow global functions (e.g., `mlflow.log_metric`) do not accept a `run_id` and can only operate on the current active run.
+- Qlib's shortcut APIs are intentionally active-context oriented: `R.log_metrics(...)`, `R.save_objects(...)`, and similar calls route to the current active recorder instead of requiring a recorder id in every call.
 - Qlib shortcut interfaces like `R.log_xxx()` require no ID parameters and automatically apply to the current context.
 - Allowing multiple actives would cause log confusion, semantic ambiguity, and force users to explicitly pass recorder objects.
 
-**Conclusion:** Technically feasible to support multiple runs (Qlib internally uses `MlflowClient` with explicit `run_id`), but deliberately restricted to one by design to ensure ultimate convenience and safety in 99% of scenarios.
+**Conclusion:** Qlib can address recorders explicitly through lower-level objects, but the global `R` facade is deliberately scoped to one active recorder at a time to keep shortcut logging unambiguous.
 
 ## 3. Concurrency Safety Design for Creating Experiments
 
@@ -49,7 +49,7 @@ In local file backend (`file://`), native MLflow `create_experiment` has no lock
 
 Qlib adds `FileLock` in `_get_or_create_exp()` for local backends (lock file placed at `mlruns/filelock`) to ensure mutual exclusion.
 
-Remote backends (`http`/`mysql`, etc.) rely on MLflow server's transactions—no lock needed, only try-except double-check.
+Remote backends (`http`/`mysql`, etc.) rely on MLflow server's transactions - no lock needed, only try-except double-check.
 
 ### Line-by-Line Explanation
 
@@ -67,7 +67,7 @@ Only enters this branch for local file systems; remote backends (e.g., `http`, `
 
 Creates a file lock (`FileLock` from the `filelock` library) for cross-process mutual exclusion.  
 Lock file path calculation: `pr.netloc` is usually empty for `file://` URIs (may include drive letter on Windows).  
-`pr.path.lstrip("/")`: Removes leading `/`, e.g., URI `file:///home/user/mlruns` → `pr.path = /home/user/mlruns` → becomes `home/user/mlruns`.  
+`pr.path.lstrip("/")`: Removes leading `/`, e.g., URI `file:///home/user/mlruns` -> `pr.path = /home/user/mlruns` -> becomes `home/user/mlruns`.  
 Final lock path: `/home/user/mlruns/filelock` (a file named `"filelock"` in the `mlruns` directory).  
 `with FileLock(...):` Attempts to acquire the lock on entry; blocks if held by another process until released.
 
@@ -88,7 +88,7 @@ Returns `(newly created Experiment object, True)`, where `True` indicates it was
 R.get_exp(experiment_name="MyExp", create=True)
 ```
 
-All detect `"MyExp"` missing → enter `_get_or_create_exp` except → attempt `create_experiment("MyExp")`.
+All detect `"MyExp"` missing -> enter `_get_or_create_exp` except -> attempt `create_experiment("MyExp")`.
 
 MLflow steps for local file system experiment creation:
 1. Create subdirectory named by `experiment_id` in `mlruns` directory.
@@ -114,12 +114,12 @@ Simultaneous execution causes race conditions:
 **Why no `FileLock` for remote backends (`http`/`mysql` etc.)?**
 - Remote MLflow tracking server is single-point; requests serialized.
 - Server-side database (MySQL/PostgreSQL) supports transactions and row locks.
-- MLflow server handles uniqueness checks and transactions in `create_experiment`—no conflicts.
+- MLflow server handles uniqueness checks and transactions in `create_experiment` - no conflicts.
 - Remote uses `try-except` to catch `ExpAlreadyExistError` (code's later branch).
 
 ### Summary:
 - Lock only for local file backend experiment creation, as MLflow lacks protection there.
-- Lock only for experiment creation—the sole global conflict risk; Run creation and logging are safe in MLflow.
+- Lock only for experiment creation - the sole global conflict risk; Run creation and logging are safe in MLflow.
 - Uniform `filelock` in `mlruns` directory ensures mutual exclusion for "same-name experiment creation" across processes, preventing duplicates/exceptions in high-concurrency.
 
 This design uses minimal cost (lock only experiment creation) to fix local backend's most common concurrency issue.
@@ -133,7 +133,7 @@ This design uses minimal cost (lock only experiment creation) to fix local backe
 | Quantity | Multiple per tracking URI | Global singleton |
 | Active State | Only one `active_recorder` at a time | Only one `active_experiment` at a time |
 | Main Operations | Create/acquire/list Recorder; start/end Recorder; `search_runs` (this experiment) | Create/acquire/list/delete Experiment; maintain `active_experiment`; manage tracking URI |
-| Class Implementation | `Experiment` ← `MLflowExperiment` | `ExpManager` ← `MLflowExpManager` |
+| Class Implementation | `Experiment` <- `MLflowExperiment` | `ExpManager` <- `MLflowExpManager` |
 | User Direct Usage | Rarely direct (acquired via `R`) | Almost never direct (all via global `R`) |
 
 ### Key Code Differences
@@ -180,9 +180,9 @@ MLflow uses UUID to generate independent directories: `mlruns/<exp_id>/<run_id>/
 - UUID guarantees uniqueness
 - Concurrent creation by multiple processes does not interfere
 
-Qlib fully trusts MLflow's native mechanism—all Recorder creation code has no locks.
+Qlib fully trusts MLflow's native mechanism - all Recorder creation code has no locks.
 
-In all provided code, no locks for Recorder creation—Qlib trusts MLflow.
+In all provided code, no locks for Recorder creation - Qlib trusts MLflow.
 
 **Key positions:**
 
@@ -236,7 +236,7 @@ This shows:
 - `run.info.artifact_uri` is `file:///path/to/mlruns/<experiment_id>/<run_id>/artifacts`
 - MLflow defaults artifacts (including Qlib `save_objects` files) to `/artifacts` subdirectory
 - Qlib saves this URI to `self._artifact_uri` and uses it everywhere
-- `get_local_dir()` parses `artifact_uri` to local disk path: strips `file:` prefix, takes `.parent` → `mlruns/<experiment_id>/<run_id>/`
+- `get_local_dir()` parses `artifact_uri` to local disk path: strips `file:` prefix, takes `.parent` -> `mlruns/<experiment_id>/<run_id>/`
 - Checks existence (local file backend only)
 
 Proves Qlib fully relies on MLflow's standard directory structure.
@@ -263,7 +263,7 @@ Note `@property` decorator: `self.client` is a property, dynamically creates new
 
 MLflow native philosophy "flexible but verbose":
 - Must pass `run_id` each time or manually manage active run
-- Common logging (`log_metric`, `log_param`, `log_artifact`) no `run_id` param—only on current active run
+- Common logging (`log_metric`, `log_param`, `log_artifact`) no `run_id` param - only on current active run
 - Same script multiple experiments/runs requires careful nesting `mlflow.start_run()`, else logs cross
 
 **Typical native MLflow (verbose):**
@@ -281,7 +281,7 @@ client = mlflow.tracking.MlflowClient()
 client.download_artifacts(run_id=run_a.info.run_id, path="pred.pkl")  # Must pass run_id
 ```
 
-Fine for single experiment, but hyperparam search, multi-model comparison, frequent historical loading → `run_id` everywhere chaos.
+Fine for single experiment, but hyperparam search, multi-model comparison, frequent historical loading -> `run_id` everywhere chaos.
 
 ## 8. Qlib Design Essence: Make Experiment Recording as Natural as Ordinary Code
 
@@ -316,11 +316,11 @@ with R.start(experiment_name="LightGBM", recorder_name="v1"):
 
 `@contextmanager` turns `start()` generator into context manager with enter/exit powers.
 
-- **Enter `with`** → `start_exp()` (activate experiment + recorder + `mlflow.start_run`)
-- **Inside `with`** → user code; all R ops auto to current recorder
-- **Exit `with`** → auto `end_exp()` + `mlflow.end_run()`
-  - Normal → `FINISHED`
-  - Exception → `FAILED`
+- **Enter `with`** -> `start_exp()` (activate experiment + recorder + `mlflow.start_run`)
+- **Inside `with`** -> user code; all R ops auto to current recorder
+- **Exit `with`** -> auto `end_exp()` + `mlflow.end_run()`
+  - Normal -> `FINISHED`
+  - Exception -> `FAILED`
 
 Guarantees release, correct status, exception safety, concise code.
 
@@ -341,14 +341,14 @@ with R.start(experiment_name="train_model"):
 2. Internal `start_exp()`: Acquire/create "train_model" Experiment; create new Recorder (Run); `mlflow.start_run()`; set as `active_recorder`.
 3. `yield` returns Recorder object.
 4. **All `with` block code in "experiment context":**
-   - `R.log_params(...)` → auto to current `active_recorder`
-   - `model.fit(dataset)` → pure training, but subsequent R ops associated
-   - `R.save_objects(...)` → save model as current recorder artifact (auto pickle/upload)
-   - `R.get_recorder().id` → get current `active_recorder` `run_id` to `rid`
-5. No need pass ID/recorder object—runs in `with` block, R knows current experiment/recorder.
-6. **Exit `with` (exit):** Normal or `model.fit()` crash → auto `end_exp()`
-   - Normal → `FINISHED`
-   - Crash → `FAILED`
+   - `R.log_params(...)` -> auto to current `active_recorder`
+   - `model.fit(dataset)` -> pure training, but subsequent R ops associated
+   - `R.save_objects(...)` -> save model as current recorder artifact (auto pickle/upload)
+   - `R.get_recorder().id` -> get current `active_recorder` `run_id` to `rid`
+5. No need pass ID/recorder object - runs in `with` block, R knows current experiment/recorder.
+6. **Exit `with` (exit):** Normal or `model.fit()` crash -> auto `end_exp()`
+   - Normal -> `FINISHED`
+   - Crash -> `FAILED`
    - `mlflow.end_run()` close Run.
 
 **Without `with`:**
@@ -373,7 +373,7 @@ Far less elegant/safe.
 
 ## 10. Qlib Still Enforces One `active_experiment` / `active_recorder`
 
-Though Qlib uses `MlflowClient` supporting `run_id` (technically multi-run possible), deliberately restricts to one—three reasons:
+Though Qlib uses `MlflowClient` supporting `run_id` (technically multi-run possible), deliberately restricts to one - three reasons:
 
 **Reason 1: Compatibility + user convenience (most important)**
 Qlib top interface R provides many no-param shortcuts:
@@ -390,10 +390,10 @@ def log_metrics(self, **kwargs):
     self.get_exp(start=True).get_recorder(start=True).log_metrics(**kwargs)
 ```
 
-Auto finds current active recorder. Multiple actives → `R.log_metrics()` unknown which → force pass recorder object, poor experience. Qlib goal: common logging "zero-param, seamless" → must global one active recorder.
+Auto finds current active recorder. Multiple actives -> `R.log_metrics()` unknown which -> force pass recorder object, poor experience. Qlib goal: common logging "zero-param, seamless" -> must global one active recorder.
 
 **Reason 3: Clear context semantics**
-`with R.start(...)` means: "From now to block end, all experiment ops belong to this recorder". Nested `with` (multiple active) confuses semantics—outer logs go inner recorder.
+`with R.start(...)` means: "From now to block end, all experiment ops belong to this recorder". Nested `with` (multiple active) confuses semantics - outer logs go inner recorder.
 
 ## 11. Where Can URI Be Changed? (Direct Evidence from Provided Code)
 
@@ -416,7 +416,7 @@ with R.uri_context("file:///tmp/temp_mlruns"):   # Temporary switch directory
         model.fit(dataset)
         R.log_metrics(IC=0.05)
         # All logs/artifacts to /tmp/temp_mlruns
-# Exit uri_context → auto restore original default_uri (e.g., ~/.qlib/mlruns)
+# Exit uri_context -> auto restore original default_uri (e.g., ~/.qlib/mlruns)
 ```
 
 ### Why `self.client` dynamic (`@property`)?
@@ -432,9 +432,9 @@ def uri(self):
 
 In `with R.uri_context(new_uri):` `self.exp_manager.default_uri` temporary `new_uri`.
 
-Dynamic property → next `self.client` access uses latest `uri`.
+Dynamic property -> next `self.client` access uses latest `uri`.
 
-If client created once in `init`, cannot sense temporary switch → logs to old place.
+If client created once in `init`, cannot sense temporary switch -> logs to old place.
 
 **Summary:** Only `R.uri_context` changes `uri` (modifies `default_uri`), with dynamic client property enables "temporary experiment storage path switch" advanced feature.
 
@@ -442,8 +442,8 @@ If client created once in `init`, cannot sense temporary switch → logs to old 
 
 `os.environ` is Python `os` module's dict-like object (`os._Environ`) containing current process environment variables.
 
-- `os.environ["PATH"]` → get `PATH`
-- `os.environ.get("HOME")` → safe get
+- `os.environ["PATH"]` -> get `PATH`
+- `os.environ.get("HOME")` -> safe get
 
 `os.environ.items()` returns iterable `(key, value)` tuple view, like `dict.items()`.
 
@@ -546,13 +546,13 @@ All absent in native MLflow; Qlib "patch" additions.
 Architecture:
 - `Recorder`/`Experiment`/`ExpManager` abstract base classes (raise `NotImplementedError` methods)
 - Current only MLflow impl
-- Abstract layers → future new classes (e.g., `WandBRecorder`) switch backends, upper R unchanged
+- Abstract layers -> future new classes (e.g., `WandBRecorder`) switch backends, upper R unchanged
 
 Though only MLflow now, workflow designed for multi-backend abstraction (weak but clear intent).
 
 ## 16. Qlib Global Recorder R: The RecorderWrapper Protection Mechanism
 
-This section explains the design and purpose of Qlib's global recorder R, focusing on the `RecorderWrapper` — a critical safety feature that prevents dangerous reinitialization of Qlib during active experiments.
+This section explains the design and purpose of Qlib's global recorder R, focusing on the `RecorderWrapper`  -  a critical safety feature that prevents dangerous reinitialization of Qlib during active experiments.
 
 ### Core Design: RecorderWrapper and Global R
 
@@ -585,7 +585,7 @@ R: QlibRecorderWrapper = RecorderWrapper()                     # Actual runtime 
 
 ### The Problem It Solves
 
-Qlib configuration (especially the MLflow tracking URI — where all experiment data is stored) is set during `qlib.init()`.
+Qlib configuration (especially the MLflow tracking URI  -  where all experiment data is stored) is set during `qlib.init()`.
 
 ```python
 qlib.init(mlflow_uri="/path/to/mlruns")  # Sets global storage location
@@ -601,13 +601,13 @@ with R.start("crypto_strategy"):
     # Accidental reinitialization with different URI
     qlib.init(mlflow_uri="/tmp/other_mlruns")
     
-    R.log_metrics(IC=0.12)  # ← Now saves to completely different folder!
+    R.log_metrics(IC=0.12)  # <- Now saves to completely different folder!
 ```
 
 **Consequences:**
 - One logical experiment split across multiple unrelated `mlruns` directories
-- Artifacts/metrics fragmented → analysis becomes impossible
-- Silent corruption — extremely hard to debug
+- Artifacts/metrics fragmented -> analysis becomes impossible
+- Silent corruption  -  extremely hard to debug
 - Destroys reproducibility
 
 ### How RecorderWrapper Prevents This
@@ -616,29 +616,29 @@ During `qlib.init()`, the config system executes:
 ```python
 exp_manager = init_instance_by_config(self["exp_manager"])
 qr = QlibRecorder(exp_manager)
-R.register(qr)  # ← Critical call to wrapper
+R.register(qr)  # <- Critical call to wrapper
 ```
 
 **Step-by-Step Safety Check in `register(provider)`:**
-1. `if self._provider is not None` → Checks if Qlib has already been initialized (a recorder instance exists)
-2. If yes → retrieve current `exp_manager`
-3. `if expm.active_experiment is not None` → Checks if an experiment is currently running (with `R.start()` block active)
-4. If both true → raise `RecorderInitializationError` immediately
+1. `if self._provider is not None` -> Checks if Qlib has already been initialized (a recorder instance exists)
+2. If yes -> retrieve current `exp_manager`
+3. `if expm.active_experiment is not None` -> Checks if an experiment is currently running (with `R.start()` block active)
+4. If both true -> raise `RecorderInitializationError` immediately
 5. Clear error message prevents URI change mid-experiment
-6. Only if safe → accept the new recorder
+6. Only if safe -> accept the new recorder
 
 ### Real-World Scenarios
 
 **Allowed (safe):**
 ```python
 qlib.init(uri="path1")
-qlib.init(uri="path2")  # No active experiment → permitted
+qlib.init(uri="path2")  # No active experiment -> permitted
 ```
 
 **Blocked (protected):**
 ```python
 with R.start("test"):           # active_experiment = True
-    qlib.init(uri="new_path")   # ← Wrapper detects → raises error instantly
+    qlib.init(uri="new_path")   # <- Wrapper detects -> raises error instantly
 ```
 
 ### Why This Design Is Excellent
@@ -649,6 +649,6 @@ with R.start("test"):           # active_experiment = True
 - **Defensive programming:** Anticipates common user errors in research code
 - **Clean integration:** Combines type safety (`Annotated`) with runtime protection
 
-This wrapper exemplifies Qlib's mature, production-grade engineering — protecting users from subtle but devastating bugs that could ruin months of quantitative research.
+This wrapper is a defensive guard around global recorder registration. It prevents accidental reinitialization from splitting one logical experiment across multiple tracking URIs.
 
-**Conclusion:** The `RecorderWrapper` is not just a minor detail — it's a thoughtful safeguard that makes Qlib reliable for serious, reproducible quantitative and cryptocurrency strategy development.
+**Conclusion:** The `RecorderWrapper` keeps the global workflow state coherent while an experiment is active.

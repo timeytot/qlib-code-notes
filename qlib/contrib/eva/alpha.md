@@ -1,3 +1,5 @@
+# Qlib Alpha Evaluation: MultiIndex Labels and Daily Precision
+
 ## `label.index.get_level_values(1).unique()` Explanation
 
 **Source file**: [qlib/contrib/eva/alpha.py](https://github.com/microsoft/qlib/blob/main/qlib/contrib/eva/alpha.py#L14)
@@ -36,21 +38,21 @@ label.index
 ### Step-by-Step Extraction
 
 ```python
-# 1. label.index → Get the entire MultiIndex
+# 1. label.index -> Get the entire MultiIndex
 idx = label.index
 
-# 2. .get_level_values(1) → Get level 1 (stock codes)
+# 2. .get_level_values(1) -> Get level 1 (stock codes)
 instruments = idx.get_level_values(1)
 # Result:
 # ['SH600000', 'SH600001', 'SH600002', 
 #  'SH600000', 'SH600001', 'SH600003',
 #  'SH600001', 'SH600002', 'SH600004']
 
-# 3. .unique() → Remove duplicates
+# 3. .unique() -> Remove duplicates
 unique_instruments = instruments.unique()
 # Result: ['SH600000', 'SH600001', 'SH600002', 'SH600003', 'SH600004']
 
-# 4. len() → Count the number of stocks
+# 4. len() -> Count the number of stocks
 stock_count = len(unique_instruments)  # 5
 ```
 

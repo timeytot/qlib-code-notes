@@ -1,4 +1,4 @@
-# Structure of `decision_list`
+# Qlib Executor Internal Data: decision_list and Indicators
 https://github.com/microsoft/qlib/blob/main/qlib/backtest/executor.py#L462
 
 In a nested backtest scenario (outer level: daily, inner level: minute-level with 240 minutes per trading day in a standard A-share market), `decision_list` is a **list of tuples**, where each tuple records:
@@ -29,7 +29,7 @@ It provides the exact time window and decision context needed to query correct b
 
 ```python
 decision_list = [
-    # ========== Minute 1 (09:30–09:31) ==========
+    # ========== Minute 1 (09:30-09:31) ==========
     (
         TradeDecisionWO(
             order_list=[
@@ -41,7 +41,7 @@ decision_list = [
         pd.Timestamp('2026-02-20 09:31:00')     # end_time
     ),
 
-    # ========== Minute 2 (09:31–09:32) ==========
+    # ========== Minute 2 (09:31-09:32) ==========
     (
         TradeDecisionWO(
             order_list=[
@@ -53,7 +53,7 @@ decision_list = [
         pd.Timestamp('2026-02-20 09:32:00')
     ),
 
-    # ========== Minute 3 (09:32–09:33) ==========
+    # ========== Minute 3 (09:32-09:33) ==========
     (
         TradeDecisionWO(
             order_list=[
@@ -84,7 +84,7 @@ decision_list = [
    - `TradeDecisionWO` object (the minute-level trading decision)
    - `start_time` (when the minute began)
    - `end_time` (when the minute ended)
-3. **One-to-one correspondence**: `decision_list[i]` corresponds to `inner_order_indicators[i]` — the i-th minute's decision and its resulting metrics
+3. **One-to-one correspondence**: `decision_list[i]` corresponds to `inner_order_indicators[i]`  -  the i-th minute's decision and its resulting metrics
 4. **Purpose**: Enables per-minute benchmark price calculation by providing the exact time window and decision context for each stock
 
 ### One-Sentence Summary
@@ -94,13 +94,13 @@ decision_list = [
 # Structure of `inner_order_indicators`
 https://github.com/microsoft/qlib/blob/main/qlib/backtest/executor.py#L473
 
-In a typical nested backtest scenario (outer level: daily, inner level: minute-level with 240 minutes per trading day), `inner_order_indicators` is ultimately **a list containing 240 `NumpyOrderIndicator` objects** — one for each minute of the trading day.
+In a typical nested backtest scenario (outer level: daily, inner level: minute-level with 240 minutes per trading day), `inner_order_indicators` is ultimately **a list containing 240 `NumpyOrderIndicator` objects**  -  one for each minute of the trading day.
 
 ### Example Structure
 
 ```python
 inner_order_indicators = [
-    # ========== Minute 1 (09:30–09:31) ==========
+    # ========== Minute 1 (09:30-09:31) ==========
     NumpyOrderIndicator({
         'deal_amount': SingleData({'SH600000': 100, 'SH600001': 200}),      # actual dealt volume
         'trade_value': SingleData({'SH600000': 1050, 'SH600001': 4060}),    # trade value (temporary, will be adjusted)
@@ -110,7 +110,7 @@ inner_order_indicators = [
         # ... other fields (ffr, pa, etc.)
     }),
 
-    # ========== Minute 2 (09:31–09:32) ==========
+    # ========== Minute 2 (09:31-09:32) ==========
     NumpyOrderIndicator({
         'deal_amount': SingleData({'SH600000': 150, 'SH600002': 300}),
         'trade_value': SingleData({'SH600000': 1620, 'SH600002': 4500}),
@@ -120,7 +120,7 @@ inner_order_indicators = [
         # ...
     }),
 
-    # ========== Minute 3 (09:32–09:33) ==========
+    # ========== Minute 3 (09:32-09:33) ==========
     NumpyOrderIndicator({
         'deal_amount': SingleData({'SH600001': 250, 'SH600002': 200}),
         'trade_value': SingleData({'SH600001': 5075, 'SH600002': 3000}),
@@ -132,7 +132,7 @@ inner_order_indicators = [
 
     # ... minutes 4 to 239 ...
 
-    # ========== Minute 240 (14:59–15:00) ==========
+    # ========== Minute 240 (14:59-15:00) ==========
     NumpyOrderIndicator({
         'deal_amount': SingleData({'SH600000': 80, 'SH600003': 150}),
         'trade_value': SingleData({'SH600000': 880, 'SH600003': 2250}),
@@ -184,9 +184,9 @@ if common_infra.has("trade_account"):
     )
     self.trade_account.reset(freq=self.time_per_step, port_metr_enabled=self.generate_portfolio_metrics)
 ```
-Core logic – shallow copy decision:If copy_trade_account=True (typical for inner/nested layers):Perform a shallow copy (copy.copy) of the parent account
-Shared: current_position (the actual holdings object) → all layers see the same cash/stock changes in real time
-Independent: portfolio_metrics, hist_positions, indicator → recreated as new objects
+Core logic - shallow copy decision:If copy_trade_account=True (typical for inner/nested layers):Perform a shallow copy (copy.copy) of the parent account
+Shared: current_position (the actual holdings object) -> all layers see the same cash/stock changes in real time
+Independent: portfolio_metrics, hist_positions, indicator -> recreated as new objects
 
 If copy_trade_account=False (typical for the top-level executor):Directly reference the parent account (no copy)
 
@@ -208,12 +208,12 @@ These lines recreate:A new portfolio_metrics object (portfolio-level metrics his
 An empty hist_positions dict (daily position snapshots)
 A new indicator object (trading execution metrics: ffr, pa, pos, etc.)
 
-→ These are independent per layer after shallow copy.Shallow Copy vs No Copy – Data ExampleInitial state (top-level account):Cash: 1,000,000
+-> These are independent per layer after shallow copy.Shallow Copy vs No Copy - Data ExampleInitial state (top-level account):Cash: 1,000,000
 Holdings: none
 portfolio_metrics: day-level container A
 indicator: day-level trading metrics A
 
-Case A: Inner layer uses shallow copy (copy_trade_account=True) – Recommended
+Case A: Inner layer uses shallow copy (copy_trade_account=True) - Recommended
 ```python
 
 inner_account = copy.copy(outer_account)
@@ -223,12 +223,12 @@ inner_account = copy.copy(outer_account)
 inner_account.portfolio_metrics  # new independent container B
 inner_account.indicator          # new independent Indicator B
 ```
-Inner layer buys 1,000 shares SH600000 @ 10 yuan:inner_account.current_position updated → cash -= 10,000, holdings +1,000
+Inner layer buys 1,000 shares SH600000 @ 10 yuan:inner_account.current_position updated -> cash -= 10,000, holdings +1,000
 Outer layer sees the same change immediately (shared position)
 Inner layer records minute-level metrics in B
 Outer layer continues recording day-level metrics in A (independent)
 
-Case B: Inner layer does NOT copy (copy_trade_account=False) – Incorrect
+Case B: Inner layer does NOT copy (copy_trade_account=False) - Incorrect
 ```python
 
 inner_account = outer_account  # direct reference
@@ -236,15 +236,15 @@ inner_account = outer_account  # direct reference
 ```
 
 Inner layer buys 1,000 shares:Position updated (correct, shared)
-But when inner layer calls reset_report:inner_account.portfolio_metrics = new minute-level container → overwrites outer's day-level container
-inner_account.indicator = new Indicator → overwrites outer's day-level indicator
+But when inner layer calls reset_report:inner_account.portfolio_metrics = new minute-level container -> overwrites outer's day-level container
+inner_account.indicator = new Indicator -> overwrites outer's day-level indicator
 
-Result: Outer layer now sees minute-level data → metrics become corrupted and unusable
+Result: Outer layer now sees minute-level data -> metrics become corrupted and unusable
 
 Why Qlib Uses This DesignReal trading requires all layers to share the same capital and positions (no independent accounts per layer)
 But metrics must be layer-specific (outer sees daily portfolio curve, inner sees minute-level execution quality)
-Shallow copy perfectly solves this:Shared current_position → real-time synchronization of holdings
-Independent portfolio_metrics & indicator → each layer tracks its own view
+Shallow copy perfectly solves this:Shared current_position -> real-time synchronization of holdings
+Independent portfolio_metrics & indicator -> each layer tracks its own view
 
 ## Summary
 reset_common_infra synchronizes shared infrastructure and uses shallow copy on the account (when copy_trade_account=True) to ensure:All layers share the same real-time position (current_position is identical)

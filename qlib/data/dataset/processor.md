@@ -1,4 +1,4 @@
-# Qlib Label Definition & `DropnaLabel` In-depth Analysis
+# Qlib Dataset Processor: Labels and DropnaLabel
 
 > **Repository Reference**: [microsoft/qlib](https://github.com/microsoft/qlib)
 > **Core Files**:
@@ -88,14 +88,14 @@ This seems harmless at first glance. But ask the critical question: **How does t
 
 It knows because **it has already peeked into the future** and realized that `close(6)` and `close(7)` do not exist. By using the *existence* of the future label as a filter for today's prediction, you are introducing a catastrophic look-ahead bias. You are effectively telling the model, "Only predict for days that we already know have a valid future return."
 
-#### ⚠️ The Look-Ahead Bias
+#### Warning The Look-Ahead Bias
 In a backtest, if you incorrectly include `DropnaLabel` in your inference processors, your strategy will only be evaluated on days that are at least 2 days before the end of your dataset. Your performance metrics will be **artificially inflated** because you've excluded the periods where you cannot trade (the end of the dataset), which in a real scenario would simply be your last few holdings.
 
 ## 3. Summary: Training vs. Inference
 
 | Aspect | Training (`learn_processors`) | Inference (`infer_processors`) |
 | :--- | :--- | :--- |
-| **`DropnaLabel` Status** | ✅ **Allowed** | ❌ **Forbidden (by code)** |
+| **`DropnaLabel` Status** | OK **Allowed** | NOT OK **Forbidden (by code)** |
 | **Goal** | Clean the training dataset. Ensure the model only learns from examples with a defined forward return. | Make a prediction for *every* valid trading day, based *only* on information available up to that day. |
 | **Action** | Drops rows with `NaN` labels. This is correct, as these samples lack a target to learn from. | Would drop rows where the *future* label is `NaN`. This is impossible to know in real-time. |
 | **Risk** | None. This is standard data preparation. | **Fatal look-ahead bias**. It uses future information to filter the present. |

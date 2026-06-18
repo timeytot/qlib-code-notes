@@ -1,6 +1,8 @@
-## BFS Traversal of Configuration Tree – Step-by-Step Execution
+# Qlib Utils: Placeholder Replacement and Wrapper Registration
 
-[https://github.com/microsoft/qlib/blob/main/qlib/utils/data.py#L803](https://github.com/microsoft/qlib/blob/main/qlib/utils/__init__.py#L803)
+## BFS Traversal of Configuration Tree - Step-by-Step Execution
+
+[qlib/utils/__init__.py#L803](https://github.com/microsoft/qlib/blob/main/qlib/utils/__init__.py#L803)
 
 ### Initial State
 
@@ -34,20 +36,20 @@ tail = 1  # Queue length (last element index + 1)
 now_item = item_queue[0] = config
 top += 1  # top = 1
 
-# config is a dict → item_keys = config.keys() = ['model', 'data']
+# config is a dict -> item_keys = config.keys() = ['model', 'data']
 
 # Iterate through keys
 for key in ['model', 'data']:
     
     # key = 'model'
     value = config['model'] = {'name': '<MODEL>', 'params': {...}}
-    # value is a dict → add to queue
+    # value is a dict -> add to queue
     item_queue.append(value)  # Queue: [config, model_dict]
     tail += 1  # tail = 2
     
     # key = 'data'
     value = config['data'] = ['train', '<TEST>', 'valid']
-    # value is a list → add to queue
+    # value is a list -> add to queue
     item_queue.append(value)  # Queue: [config, model_dict, data_list]
     tail += 1  # tail = 3
 
@@ -60,19 +62,19 @@ for key in ['model', 'data']:
 now_item = item_queue[1] = model_dict
 top += 1  # top = 2
 
-# model_dict is a dict → item_keys = ['name', 'params']
+# model_dict is a dict -> item_keys = ['name', 'params']
 
 # Iterate through keys
 for key in ['name', 'params']:
     
     # key = 'name'
     value = model_dict['name'] = '<MODEL>'
-    # value is a str → replace placeholder
-    model_dict['name'] = try_replace_placeholder('<MODEL>')  # → 'LGBModel'
+    # value is a str -> replace placeholder
+    model_dict['name'] = try_replace_placeholder('<MODEL>')  # -> 'LGBModel'
     
     # key = 'params'
     value = model_dict['params'] = {'lr': '<LR>', 'depth': 5}
-    # value is a dict → add to queue
+    # value is a dict -> add to queue
     item_queue.append(value)  # Queue: [config, model_dict, data_list, params_dict]
     tail += 1  # tail = 4
 
@@ -85,23 +87,23 @@ for key in ['name', 'params']:
 now_item = item_queue[2] = data_list
 top += 1  # top = 3
 
-# data_list is a list → item_keys = range(3) = [0, 1, 2]
+# data_list is a list -> item_keys = range(3) = [0, 1, 2]
 
 # Iterate through indices
 for idx in [0, 1, 2]:
     
     # idx = 0
     value = data_list[0] = 'train'
-    # value is a str, but not a placeholder → unchanged
+    # value is a str, but not a placeholder -> unchanged
     
     # idx = 1
     value = data_list[1] = '<TEST>'
-    # value is a str → replace placeholder
-    data_list[1] = try_replace_placeholder('<TEST>')  # → 'test_data'
+    # value is a str -> replace placeholder
+    data_list[1] = try_replace_placeholder('<TEST>')  # -> 'test_data'
     
     # idx = 2
     value = data_list[2] = 'valid'
-    # value is a str, not a placeholder → unchanged
+    # value is a str, not a placeholder -> unchanged
 
 # No new elements added to queue
 # End of Round 3: top=3, tail=4, Queue=[config, model_dict, data_list, params_dict]
@@ -113,25 +115,25 @@ for idx in [0, 1, 2]:
 now_item = item_queue[3] = params_dict
 top += 1  # top = 4
 
-# params_dict is a dict → item_keys = ['lr', 'depth']
+# params_dict is a dict -> item_keys = ['lr', 'depth']
 
 # Iterate through keys
 for key in ['lr', 'depth']:
     
     # key = 'lr'
     value = params_dict['lr'] = '<LR>'
-    # value is a str → replace placeholder
-    params_dict['lr'] = try_replace_placeholder('<LR>')  # → 0.01
+    # value is a str -> replace placeholder
+    params_dict['lr'] = try_replace_placeholder('<LR>')  # -> 0.01
     
     # key = 'depth'
     value = params_dict['depth'] = 5
-    # value is an int → not a str, skipped
+    # value is an int -> not a str, skipped
 
 # No new elements added to queue
 # End of Round 4: top=4, tail=4
 ```
 
-### Loop Ends (top=4, tail=4 → top < tail is false)
+### Loop Ends (top=4, tail=4 -> top < tail is false)
 
 ### Final Result
 
@@ -254,11 +256,11 @@ config = {
 # Get the end date of the training set
 value = get_item_from_obj(config, "dataset.kwargs.segments.train.1")
 # Execution process:
-# 1. k = "dataset" → cur_cfg = config["dataset"]
-# 2. k = "kwargs"  → cur_cfg = config["dataset"]["kwargs"]
-# 3. k = "segments" → cur_cfg = config["dataset"]["kwargs"]["segments"]
-# 4. k = "train"    → cur_cfg = config["dataset"]["kwargs"]["segments"]["train"]
-# 5. k = "1"        → k.isdigit() = True → cur_cfg = cur_cfg[1] = "2014-12-31"
+# 1. k = "dataset" -> cur_cfg = config["dataset"]
+# 2. k = "kwargs"  -> cur_cfg = config["dataset"]["kwargs"]
+# 3. k = "segments" -> cur_cfg = config["dataset"]["kwargs"]["segments"]
+# 4. k = "train"    -> cur_cfg = config["dataset"]["kwargs"]["segments"]["train"]
+# 5. k = "1"        -> k.isdigit() = True -> cur_cfg = cur_cfg[1] = "2014-12-31"
 # Returns "2014-12-31"
 ```
 
@@ -274,9 +276,9 @@ config = {
 # Get the third element from the list
 value = get_item_from_obj(config, "data.values.2")
 # Execution process:
-# 1. k = "data"   → cur_cfg = config["data"]
-# 2. k = "values" → cur_cfg = config["data"]["values"] (It is list now)
-# 3. k = "2"      → k.isdigit() = True → cur_cfg = cur_cfg[2] = 300
+# 1. k = "data"   -> cur_cfg = config["data"]
+# 2. k = "values" -> cur_cfg = config["data"]["values"] (It is list now)
+# 3. k = "2"      -> k.isdigit() = True -> cur_cfg = cur_cfg[2] = 300
 # Returns 300
 ```
 
@@ -395,15 +397,15 @@ Using the first example, the recursion process looks like this:
 
 ```
 Level 1: {'a': 1, 'c': {...}, 'd': [...]}
-  ├─ key='a', value=1 → not a dict → add ('a', 1)
-  ├─ key='c', value={'a': 2, 'b': {...}} → is a dict → recurse
-  │   ├─ Level 2 (parent_key='c'):
-  │   │   ├─ key='a', value=2 → not a dict → add ('c.a', 2)
-  │   │   └─ key='b', value={'x': 5, 'y': 10} → is a dict → recurse
-  │   │       ├─ Level 3 (parent_key='c.b'):
-  │   │       │   ├─ key='x', value=5 → add ('c.b.x', 5)
-  │   │       │   └─ key='y', value=10 → add ('c.b.y', 10)
-  └─ key='d', value=[1,2,3] → not a dict → add ('d', [1,2,3])
+  |-- key='a', value=1 -> not a dict -> add ('a', 1)
+  |-- key='c', value={'a': 2, 'b': {...}} -> is a dict -> recurse
+  |   |-- Level 2 (parent_key='c'):
+  |   |   |-- key='a', value=2 -> not a dict -> add ('c.a', 2)
+  |   |   `-- key='b', value={'x': 5, 'y': 10} -> is a dict -> recurse
+  |   |       |-- Level 3 (parent_key='c.b'):
+  |   |       |   |-- key='x', value=5 -> add ('c.b.x', 5)
+  |   |       |   `-- key='y', value=10 -> add ('c.b.y', 10)
+  `-- key='d', value=[1,2,3] -> not a dict -> add ('d', [1,2,3])
 ```
 
 ### Application Scenarios in Qlib
@@ -498,7 +500,7 @@ Position layout:
 ```text
 index: 0  1  2  3  4  5
 value: 1  2  4  4  4  6
-            ↑        ↑
+            ^        ^
       left=2     right-1=4
 ```
 
@@ -528,7 +530,7 @@ Position layout:
 ```text
 index: 0  1  2  3
 value: 1  2  4  6
-            ↑
+            ^
       insert position = 2
 ```
 

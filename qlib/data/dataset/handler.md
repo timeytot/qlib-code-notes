@@ -1,4 +1,4 @@
-# Qlib `DataHandlerLP` Processing Pipeline
+# Qlib DataHandlerLP Processing Pipeline
 
 **Source Code**: https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/handler.py#L552
 
@@ -36,20 +36,20 @@ The design follows one fundamental principle:
 
 ```
 DataLoader
-    ↓
+    v
 raw_df (= self._data)
-    ↓
+    v
 shared_processors
-    ↓
+    v
 _shared_df
-    ↓
+    v
 infer_processors
-    ↓
-_infer  ←  Used for prediction/backtesting
-    ↓
+    v
+_infer  <-  Used for prediction/backtesting
+    v
 learn_processors
-    ↓
-_learn  ←  Used for training
+    v
+_learn  <-  Used for training
 ```
 
 **Important relationship**: `learn = infer + additional processors`
@@ -63,14 +63,14 @@ _learn  ←  Used for training
 ```
 Training Period (2020)              Prediction Period (2021)
       |                                    |
-      ▼                                    ▼
+      v                                    v
 learn_df_2020                        infer_df_2021
-(model.fit)                     →   (model.predict)
+(model.fit)                     ->   (model.predict)
       |                                    |
-      ▼                                    ▼
-   Model_2020  ───────────────────→  Predictions_2021
+      v                                    v
+   Model_2020  -------------------->  Predictions_2021
                                           |
-                                          ▼
+                                          v
                                    Evaluate with actual labels
                                    (when they become available)
 ```
@@ -92,7 +92,7 @@ X_train = train_data['feature']
 y_train = train_data['label']
 
 # Train the model
-model.fit(X_train, y_train)      # ← model.fit uses learn_df
+model.fit(X_train, y_train)      # <- model.fit uses learn_df
 
 # ==================== PREDICTION PHASE ====================
 # Use 2021 data to make predictions
@@ -108,7 +108,7 @@ X_test = test_data['feature']
 y_test = test_data['label']      # Actual labels for evaluation
 
 # Make predictions
-predictions = model.predict(X_test)  # ← model.predict uses infer_df
+predictions = model.predict(X_test)  # <- model.predict uses infer_df
 
 # Evaluate (after true labels are known)
 from sklearn.metrics import mean_squared_error
@@ -131,12 +131,12 @@ dataset = DatasetH(handler=handler, segments={
 # ===== STEP 1: Train on 2020 data =====
 X_train = dataset.prepare('train', data_key='learn')['feature']
 y_train = dataset.prepare('train', data_key='learn')['label']
-model.fit(X_train, y_train)  # ← model.fit with learn_df
+model.fit(X_train, y_train)  # <- model.fit with learn_df
 
 # ===== STEP 2: Validate on H1 2021 =====
 X_valid = dataset.prepare('valid', data_key='infer')['feature']
 y_valid = dataset.prepare('valid', data_key='infer')['label']
-pred_valid = model.predict(X_valid)  # ← model.predict with infer_df
+pred_valid = model.predict(X_valid)  # <- model.predict with infer_df
 print("Validation MSE:", mean_squared_error(y_valid, pred_valid))
 
 # ===== STEP 3: Retrain on more data =====
@@ -176,7 +176,7 @@ Assume the raw dataset (`self._data`) contains 3 stocks across 2 days.
 
 ---
 
-### Step 1 — `shared_processors`
+### Step 1  -  `shared_processors`
 
 Example processors: `RobustZScoreNorm`, `FillnaFeature`
 
@@ -186,7 +186,7 @@ Output: `_shared_df`
 
 ---
 
-### Step 2 — `infer_processors`
+### Step 2  -  `infer_processors`
 
 Example: `Fillna(label = 0)`
 
@@ -209,7 +209,7 @@ Example: `Fillna(label = 0)`
 
 ---
 
-### Step 3 — `learn_processors`
+### Step 3  -  `learn_processors`
 
 Example: `DropnaLabel`, `CSZScoreNorm(label)`
 
@@ -266,8 +266,8 @@ mse = mean_squared_error(true_labels, predictions)
 | **Live Prediction** | `infer_df` | `"infer"` | Labels not available yet | `model.predict(X_infer)` |
 
 ### Golden Rule
-- **`model.fit`** → always use **`data_key="learn"`**
-- **`model.predict`** → always use **`data_key="infer"`** (default)
+- **`model.fit`** -> always use **`data_key="learn"`**
+- **`model.predict`** -> always use **`data_key="infer"`** (default)
 
 This separation ensures that:
 - Training remains stable with clean labels
@@ -288,11 +288,11 @@ Available historical data: `2020`, `2021`, `2022`
 
 ---
 
-### 🔵 First Training
+### - First Training
 - **Train:** `2020`
-- **Fit →** `model_2020`
+- **Fit ->** `model_2020`
 
-### 🔵 First Prediction (`2021`)
+### - First Prediction (`2021`)
 - **Infer:** `2021`
 - **Predict using** `model_2020`
 
@@ -300,11 +300,11 @@ Available historical data: `2020`, `2021`, `2022`
 
 ### 🟠 Second Training (Expanded)
 - **Train:** `2020 + 2021`
-- **Fit →** `model_2021`
+- **Fit ->** `model_2021`
 
-> ⚠️ Not only `2020` — all available data up to that point is used.
+> Warning Not only `2020`  -  all available data up to that point is used.
 
-### 🔵 Second Prediction (`2022`)
+### - Second Prediction (`2022`)
 - **Infer:** `2022`
 - **Predict using** `model_2021`
 
@@ -312,31 +312,31 @@ Available historical data: `2020`, `2021`, `2022`
 
 ### 🟠 Third Training
 - **Train:** `2020 + 2021 + 2022`
-- **Fit →** `model_2022`
+- **Fit ->** `model_2022`
 
 ---
 
 ## 📊 Core Workflow
 
 ```
-2020 → fit → model_2020
-        ↓
-2021 → predict
-        ↓
+2020 -> fit -> model_2020
+        v
+2021 -> predict
+        v
      add to training
-        ↓
-2020+2021 → fit → model_2021
-        ↓
-2022 → predict
-        ↓
+        v
+2020+2021 -> fit -> model_2021
+        v
+2022 -> predict
+        v
      add to training
-        ↓
-2020+2021+2022 → fit → model_2022
+        v
+2020+2021+2022 -> fit -> model_2022
 ```
 
 ---
 
-## ✅ Correct Rolling Training Logic
+## OK Correct Rolling Training Logic
 
 | Step | Train Data | Predict |
 |------|------------|--------|

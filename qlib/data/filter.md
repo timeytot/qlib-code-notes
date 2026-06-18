@@ -1,4 +1,4 @@
-# Understanding `_getFilterSeries()` in Qlib: Expression-Based Dynamic Filtering
+# Qlib Data Filters: ExpressionDFilter._getFilterSeries
 
 This document explains the execution flow of `_getFilterSeries()` in Qlib, which is a key method for expression-based dynamic filtering of instruments.
 
@@ -358,7 +358,7 @@ _timestamp_series = self._filterSeries(_timestamp_series, _filter_series)
 # Visualizing the AND operation:
 # Day         Availability    Rule Met     Result (Kept?)
 # 2020-02-01  True         &  False     = False -> Discarded
-# 2020-02-02  True         &  True      = True  -> Kept ✅
+# 2020-02-02  True         &  True      = True  -> Kept OK
 # 2020-02-03  True         &  False     = False -> Discarded
 # 2020-04-01  False        &  (N/A)*    = False -> Discarded (outside filter range)
 # *The operation is only performed within the _filter_calendar range.

@@ -1,4 +1,4 @@
-# `Serializable._is_kept` and `__getstate__` Logic
+# Qlib Serializable: _is_kept and __getstate__
 
 **Source file**: [qlib/utils/serial.py#L38](https://github.com/microsoft/qlib/blob/main/qlib/utils/serial.py#L38)
 
@@ -106,10 +106,10 @@ For each attribute, `_is_kept()` is called:
 
 | Attribute | `_is_kept()` Evaluation | Result |
 |-----------|-------------------------|--------|
-| `"data"` | Not in `config_attr`, continue checking | ✅ **Saved** (最终 True) |
-| **`"_include"`** | **In `config_attr` → direct `return False`** | ❌ **Not saved** |
-| **`"_exclude"`** | **In `config_attr` → direct `return False`** | ❌ **Not saved** |
-| `"_cache"` | Not in `config_attr`, continue checking | ❌ Not saved (starts with `_` and not in include list) |
+| `"data"` | Not in `config_attr`, continue checking | OK **Saved** (最终 True) |
+| **`"_include"`** | **In `config_attr` -> direct `return False`** | NOT OK **Not saved** |
+| **`"_exclude"`** | **In `config_attr` -> direct `return False`** | NOT OK **Not saved** |
+| `"_cache"` | Not in `config_attr`, continue checking | NOT OK Not saved (starts with `_` and not in include list) |
 
 #### Serialization Result
 
@@ -130,7 +130,7 @@ state = {'data': [1, 2, 3], '_include': ['data']}
 # After loading
 loaded = MySerializable()
 loaded.__setstate__(state)
-# loaded._include = ['data']  ← The rule becomes fixed!
+# loaded._include = ['data']  <- The rule becomes fixed!
 ```
 
 ### Detailed Logic Breakdown
@@ -156,10 +156,10 @@ class MyClass:
 
 ```python
 # First line: if "data" in self.config_attr?
-# config_attr = ["_include", "_exclude"] → "data" is NOT in it → False
+# config_attr = ["_include", "_exclude"] -> "data" is NOT in it -> False
 
 # Second line: if "data" in self._get_attr_list("include")?
-# self._get_attr_list("include") = ["data", "params"] → "data" IS in it → True
+# self._get_attr_list("include") = ["data", "params"] -> "data" IS in it -> True
 # Result: Save "data"
 ```
 
@@ -167,19 +167,19 @@ class MyClass:
 
 ```python
 # First line: if "_include" in self.config_attr?
-# config_attr = ["_include", "_exclude"] → "_include" IS in it → True
+# config_attr = ["_include", "_exclude"] -> "_include" IS in it -> True
 # Directly returns False, second line is not executed
 # Result: Do NOT save "_include"
 ```
 
 ### Analogy for Understanding
 
-- **`config_attr`** acts like a **blacklist** – it contains the **attribute names themselves** that should never be saved
-- **The value of `_include`** acts like a **whitelist** – it contains the **names of other attributes** that should be saved
+- **`config_attr`** acts like a **blacklist** - it contains the **attribute names themselves** that should never be saved
+- **The value of `_include`** acts like a **whitelist** - it contains the **names of other attributes** that should be saved
 
 Therefore:
-- `"_include"` is in the blacklist → not saved
-- `"data"` is not in the blacklist → check the whitelist → it is in the whitelist → saved
+- `"_include"` is in the blacklist -> not saved
+- `"data"` is not in the blacklist -> check the whitelist -> it is in the whitelist -> saved
 
 ### Summary
 
@@ -233,9 +233,9 @@ for k, v in kwargs.items():
 obj.config(dump_all=True, include=["data"], exclude=["_cache"])
 
 # Internal execution
-# k="dump_all", v=True → attr_name="_dump_all", setattr(self, "_dump_all", True)
-# k="include", v=["data"] → attr_name="_include", setattr(self, "_include", ["data"])
-# k="exclude", v=["_cache"] → attr_name="_exclude", setattr(self, "_exclude", ["_cache"])
+# k="dump_all", v=True -> attr_name="_dump_all", setattr(self, "_dump_all", True)
+# k="include", v=["data"] -> attr_name="_include", setattr(self, "_include", ["data"])
+# k="exclude", v=["_cache"] -> attr_name="_exclude", setattr(self, "_exclude", ["_cache"])
 ```
 
 #### 2. Recursive Processing of Child Objects
@@ -283,11 +283,11 @@ model.config(
 )
 
 # After configuration:
-# - model.data → saved (in include list)
-# - model.params → saved (in include list)
-# - model._cache → not saved (in exclude list)
-# - model.sub_model.weights → saved (due to recursion and not excluded)
-# - model.sub_model._temp → not saved (private attribute with dump_all=False)
+# - model.data -> saved (in include list)
+# - model.params -> saved (in include list)
+# - model._cache -> not saved (in exclude list)
+# - model.sub_model.weights -> saved (due to recursion and not excluded)
+# - model.sub_model._temp -> not saved (private attribute with dump_all=False)
 ```
 
 ### Why is `FLAG_KEY` Needed?
@@ -308,7 +308,7 @@ b.parent = a
 
 # Without FLAG_KEY, recursive configuration would cause:
 a.config(recursive=True)
-# a → b → a → b → ... Infinite loop!
+# a -> b -> a -> b -> ... Infinite loop!
 
 # With FLAG_KEY:
 a.config(recursive=True)

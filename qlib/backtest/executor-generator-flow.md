@@ -1,4 +1,4 @@
-# Qlib Backtest Generator / `yield from` Control Flow
+# Qlib Backtest Executor Generator and yield-from Control Flow
 
 ## 1. Core Idea
 
@@ -50,16 +50,16 @@ The execution chain can be understood as:
 
 ```text
 backtest_loop
-  └─ collect_data_loop
-       └─ yield from trade_executor.collect_data(...)
-            └─ BaseExecutor.collect_data
-                 ├─ if track_data: yield trade_decision
-                 ├─ obj = self._collect_data(...)
-                 ├─ if obj is generator: yield_res = yield from obj
-                 ├─ res, kwargs = yield_res / obj
-                 ├─ trade_account.update_bar_end(...)
-                 ├─ trade_calendar.step()
-                 └─ return res
+  `-- collect_data_loop
+       `-- yield from trade_executor.collect_data(...)
+            `-- BaseExecutor.collect_data
+                 |-- if track_data: yield trade_decision
+                 |-- obj = self._collect_data(...)
+                 |-- if obj is generator: yield_res = yield from obj
+                 |-- res, kwargs = yield_res / obj
+                 |-- trade_account.update_bar_end(...)
+                 |-- trade_calendar.step()
+                 `-- return res
 ```
 
 ---

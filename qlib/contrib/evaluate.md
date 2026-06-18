@@ -1,4 +1,4 @@
-# Information ratio
+# Qlib Contrib Evaluate: risk_analysis, indicator_analysis, and backtest_daily
 
 https://github.com/microsoft/qlib/blob/main/qlib/contrib/evaluate.py#L85
 
@@ -8,12 +8,12 @@ These two formulas are **mathematically identical**!
 
 ```python
 # Formula 1: Annualized Information Ratio = Annualized Return / Annualized Std Dev
-Annualized Return = μ × N
-Annualized Std Dev = σ × √N
-Annualized Information Ratio = (μ × N) / (σ × √N) = μ/σ × √N
+Annualized Return = mu * N
+Annualized Std Dev = sigma * sqrtN
+Annualized Information Ratio = (mu * N) / (sigma * sqrtN) = mu/sigma * sqrtN
 
 # Formula 2: information_ratio = mean / std * np.sqrt(N)
-information_ratio = μ/σ × √N
+information_ratio = mu/sigma * sqrtN
 
 # They are completely equivalent!
 ```
@@ -33,12 +33,12 @@ sigma = 0.02    # Daily excess return std dev
 N = 238         # Trading days per year
 
 # Method 1: Annualize first, then divide
-annual_return = mu * N                    # 0.001 × 238 = 0.238
-annual_std = sigma * np.sqrt(N)           # 0.02 × 15.43 = 0.3086
+annual_return = mu * N                    # 0.001 * 238 = 0.238
+annual_std = sigma * np.sqrt(N)           # 0.02 * 15.43 = 0.3086
 ir1 = annual_return / annual_std          # 0.238 / 0.3086 = 0.771
 
-# Method 2: Direct multiplication by √N
-ir2 = mu / sigma * np.sqrt(N)             # 0.001/0.02 × 15.43 = 0.05 × 15.43 = 0.771
+# Method 2: Direct multiplication by sqrtN
+ir2 = mu / sigma * np.sqrt(N)             # 0.001/0.02 * 15.43 = 0.05 * 15.43 = 0.771
 
 # They are exactly equal!
 print(ir1 == ir2)  # True
@@ -65,8 +65,8 @@ information_ratio = annual_return / annual_std
 
 | Version | Formula | Advantage |
 |---------|---------|-----------|
-| **Concise** | μ/σ × √N | Clean code, one-step calculation |
-| **Expanded** | (μ×N) / (σ×√N) | Easier to understand the annualization process |
+| **Concise** | mu/sigma * sqrtN | Clean code, one-step calculation |
+| **Expanded** | (mu*N) / (sigma*sqrtN) | Easier to understand the annualization process |
 
 Your observation is very sharp! These two formulas are indeed different representations of the same mathematical expression.
 
@@ -147,7 +147,7 @@ annual_sum = np.sum(r)  # 0.252 (25.2%)
 # `product` mode
 annual_product = np.prod(1 + np.array(r)) - 1  # 0.285 (28.5%)
 # Considers compounding, more realistic
-# (1.001)^252 - 1 ≈ 0.285
+# (1.001)^252 - 1 ~= 0.285
 ```
 
 ### Summary
@@ -271,11 +271,11 @@ This expression represents the **continuously compounded return** or **log retur
 ### Numerical Comparison
 
 ```python
-# Price increase: 100 → 105
+# Price increase: 100 -> 105
 simple_return = 5/100 = 0.05 = 5%
 log_return = ln(105/100) = ln(1.05) = 0.04879 = 4.879%
 
-# Price decrease: 100 → 95
+# Price decrease: 100 -> 95
 simple_return = -5/100 = -0.05 = -5%
 log_return = ln(95/100) = ln(0.95) = -0.05129 = -5.129%
 ```
@@ -300,15 +300,15 @@ sum_log = -0.0101
 # Exactly equals ln(0.99) = -0.0101 (log of actual total return)
 
 # Multi-period generalization
-# Simple return (multiplicative): (1+r₁) × (1+r₂) × (1+r₃)
-# Log return (additive): ln(1+r₁) + ln(1+r₂) + ln(1+r₃)
+# Simple return (multiplicative): (1+r1) * (1+r2) * (1+r₃)
+# Log return (additive): ln(1+r1) + ln(1+r2) + ln(1+r₃)
 ```
 
 ### 4.2 Symmetry
 
 ```python
 # Simple returns are asymmetric
-Up 10% then down 10%: 1.1 × 0.9 = 0.99 (1% loss)
+Up 10% then down 10%: 1.1 * 0.9 = 0.99 (1% loss)
 
 # Log returns are symmetric
 ln(1.1) + ln(0.9) = 0.09531 - 0.10536 = -0.01005
@@ -330,8 +330,8 @@ ln(1.1) + ln(0.9) = 0.09531 - 0.10536 = -0.01005
 # On a log-scale chart, the same percentage gain corresponds to the same vertical distance
 
 # Example: +100% gain
-Price: 10 → 20  (+100%)
-Price: 100 → 200 (+100%)
+Price: 10 -> 20  (+100%)
+Price: 100 -> 200 (+100%)
 
 # On a log scale:
 ln(20)-ln(10) = ln(2) = 0.693
@@ -345,10 +345,10 @@ ln(200)-ln(100) = ln(2) = 0.693
 
 ```python
 # In `product` mode, total return is multiplicative
-total_return = (1+r₁) × (1+r₂) × ... × (1+rn)
+total_return = (1+r1) * (1+r2) * ... * (1+rn)
 
 # Taking logs converts multiplication to addition
-ln(total_return) = ln(1+r₁) + ln(1+r₂) + ... + ln(1+rn)
+ln(total_return) = ln(1+r1) + ln(1+r2) + ... + ln(1+rn)
 
 # Therefore, the standard deviation of log returns can be used directly for risk assessment
 # This is why `product` mode uses np.log(1 + r).std(ddof=1)
@@ -360,11 +360,11 @@ ln(total_return) = ln(1+r₁) + ln(1+r₂) + ... + ln(1+rn)
 
 | Aspect | Simple Return (`r`) | Log Return (`ln(1+r)`) |
 |--------|---------------------|------------------------|
-| **Time additivity** | ❌ No | ✅ Yes |
-| **Symmetry** | ❌ No | ✅ Yes |
-| **Normal distribution** | ❌ No (bounded) | ✅ Yes (unbounded) |
+| **Time additivity** | NOT OK No | OK Yes |
+| **Symmetry** | NOT OK No | OK Yes |
+| **Normal distribution** | NOT OK No (bounded) | OK Yes (unbounded) |
 | **Multi-period calculation** | Multiplicative | Additive |
-| **Range** | [-1, ∞) | (-∞, ∞) |
+| **Range** | [-1, infinity) | (-infinity, infinity) |
 | **Financial interpretation** | Discrete compounding | Continuous compounding |
 
 ## Understanding `annualized_return = (1 + cumulative_return) ** (N / len(r)) - 1`
@@ -452,7 +452,7 @@ annualized_return = (1 + 0.0457) ** (12/3) - 1
 
 ```python
 # 60 days of returns
-# cumulative_return = (1+r₁)*(1+r₂)*...*(1+r₆₀) - 1
+# cumulative_return = (1+r1)*(1+r2)*...*(1+r₆₀) - 1
 # Assume cumulative_return = 0.10 (10%)
 
 len(r) = 60  # 60 trading days

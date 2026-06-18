@@ -1,4 +1,4 @@
-# Qlib Indicator: How `sum_all_indicators()` and `sum_by_index()` Aggregate Order Metrics
+# Qlib Indicator Aggregation: sum_all_indicators and sum_by_index
 
 This note explains the following code inside `Indicator._agg_order_trade_info()` in Qlib's backtest module:
 
@@ -44,9 +44,9 @@ The data flow is:
 
 ```text
 inner_order_indicators
-    ↓
+    v
 sum_all_indicators()
-    ↓
+    v
 self.order_indicator
 ```
 
@@ -138,7 +138,7 @@ So when `sum_all_indicators()` later sums `trade_price`, it is not summing raw p
 It is summing:
 
 ```text
-deal amount × trade price
+deal amount * trade price
 ```
 
 After the sum is complete, Qlib divides it by the total `deal_amount` to recover the outer-level average trade price.

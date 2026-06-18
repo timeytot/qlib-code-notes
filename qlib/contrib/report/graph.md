@@ -1,7 +1,7 @@
-# Qlib Report Graph: Automatic Subplot Layout Logic
+# Qlib Report Graph: Automatic Subplot Layout
 
 **Source Code Location**  
-[https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/graph.py](https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/graph.py)
+[qlib/contrib/report/graph.py](https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/graph.py)
 
 The subplot generation in Qlib's reporting module follows a three-step process to create a grid of charts from a DataFrame automatically. Each step is handled by a dedicated method, and all aspects can be customized by the user.
 
@@ -203,9 +203,9 @@ def _init_sub_graph_data(self):
 | i | Column Name | Row Calculation | Col Calculation | Row | Col | Display Name |
 |---|-------------|-----------------|-----------------|-----|-----|--------------|
 | 0 | IC | ceil((0+1)/2)=1 | (1%2)=1 | 1 | 1 | "IC" |
-| 1 | Rank_IC | ceil((1+1)/2)=1 | (2%2)=0 → 2 | 1 | 2 | "Rank IC" |
+| 1 | Rank_IC | ceil((1+1)/2)=1 | (2%2)=0 -> 2 | 1 | 2 | "Rank IC" |
 | 2 | FFR | ceil((2+1)/2)=2 | (3%2)=1 | 2 | 1 | "FFR" |
-| 3 | PA | ceil((3+1)/2)=2 | (4%2)=0 → 2 | 2 | 2 | "PA" |
+| 3 | PA | ceil((3+1)/2)=2 | (4%2)=0 -> 2 | 2 | 2 | "PA" |
 | 4 | POS | ceil((4+1)/2)=3 | (5%2)=1 | 3 | 1 | "POS" |
 
 #### Generated `_sub_graph_data`
@@ -372,22 +372,22 @@ else:
 
     graph = ScatterGraph(df, name_dict={...}, layout={...}, graph_kwargs={...})
     
-    ↓
+    v
 
     __init__()
-      ├── self._df = df
-      ├── self._layout = layout or {}
-      ├── self._graph_kwargs = graph_kwargs or {}
-      ├── self._name_dict = name_dict or {col:col for col in df.columns}
-      ├── self._init_parameters()           # 设置 self._graph_type = "Scatter"
-      └── self._init_data()                 # ★ 核心入口
+      |--- self._df = df
+      |--- self._layout = layout or {}
+      |--- self._graph_kwargs = graph_kwargs or {}
+      |--- self._name_dict = name_dict or {col:col for col in df.columns}
+      |--- self._init_parameters()           # 设置 self._graph_type = "Scatter"
+      `--- self._init_data()                 # ★ 核心入口
     
-          ↓
+          v
     
           _init_data()
-            └── self.data = self._get_data()     # ★ 这里产生 trace 列表
+            `--- self.data = self._get_data()     # ★ 这里产生 trace 列表
     
-                ↓
+                v
     
                 _get_data()   （ScatterGraph 继承自 BaseGraph，使用父类的默认实现）
     
@@ -610,9 +610,9 @@ Assume we have:
 
 1. **Creates empty 2x2 subplot grid** with titles
 2. **For each column**:
-   - `IC` → creates `ScatterGraph` → extracts 1-3 traces → adds to (1,1)
-   - `Rank_IC` → creates `ScatterGraph` → extracts traces → adds to (1,2)
-   - `FFR` → creates `ScatterGraph` → extracts traces → adds to (2,1)
+   - `IC` -> creates `ScatterGraph` -> extracts 1-3 traces -> adds to (1,1)
+   - `Rank_IC` -> creates `ScatterGraph` -> extracts traces -> adds to (1,2)
+   - `FFR` -> creates `ScatterGraph` -> extracts traces -> adds to (2,1)
 3. **Applies subplot axis settings**: x-axis titles "Date" with 45° rotation
 4. **Sets theme** to Plotly 3.x default and applies global layout with title, size, etc.
 

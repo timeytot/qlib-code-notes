@@ -1,3 +1,5 @@
+# Qlib Report Utils: guess_plotly_rangebreaks
+
 ## `guess_plotly_rangebreaks` Function Explanation
 
 **Source file**: [qlib/contrib/report/utils.py#L49](https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/utils.py#L49)
@@ -121,11 +123,11 @@ if gap > min_gap:
 
 | Iteration | gap | d | gap > min_gap? | Operation | Description |
 |-----------|-----|---|----------------|-----------|-------------|
-| 1 | 1 day | 03-05 | 1 > 1? ❌ | Skip | Normal interval |
-| 2 | 3 days | 03-06 | 3 > 1? ✅ | `gap-min_gap=2 days`<br>`d+min_gap=03-07` | Skip 2 days starting from Saturday |
-| 3 | 1 day | 03-09 | 1 > 1? ❌ | Skip | Normal interval |
-| 4 | 1 day | 03-10 | 1 > 1? ❌ | Skip | Normal interval |
-| 5 | 1 day | 03-11 | 1 > 1? ❌ | Skip | Normal interval |
+| 1 | 1 day | 03-05 | 1 > 1? NOT OK | Skip | Normal interval |
+| 2 | 3 days | 03-06 | 3 > 1? OK | `gap-min_gap=2 days`<br>`d+min_gap=03-07` | Skip 2 days starting from Saturday |
+| 3 | 1 day | 03-09 | 1 > 1? NOT OK | Skip | Normal interval |
+| 4 | 1 day | 03-10 | 1 > 1? NOT OK | Skip | Normal interval |
+| 5 | 1 day | 03-11 | 1 > 1? NOT OK | Skip | Normal interval |
 
 **Detailed Execution for Iteration 2**:
 ```python

@@ -1,4 +1,4 @@
-# `fetch_df_by_col` Function
+# Qlib Dataset Utils: fetch_df_by_col
 
 **Source Code URL**: https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/utils.py#L81
 
@@ -165,8 +165,8 @@ datetime   instrument
 ```
 
 Index levels:
-- level 0 → datetime
-- level 1 → instrument
+- level 0 -> datetime
+- level 1 -> instrument
 
 ## Selector Types
 

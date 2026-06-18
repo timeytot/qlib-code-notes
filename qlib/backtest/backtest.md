@@ -1,4 +1,4 @@
-# `PORT_METRIC` and `INDICATOR_METRIC` Structure
+# Qlib Backtest Result Structures: PORT_METRIC and INDICATOR_METRIC
 https://github.com/microsoft/qlib/blob/main/qlib/backtest/backtest.py#L22
 
 ### Type Definitions

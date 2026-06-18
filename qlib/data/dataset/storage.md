@@ -1,4 +1,4 @@
-# `HashingStockStorage` 
+# Qlib Dataset Storage: HashingStockStorage
 
 **Source Code**: https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/storage.py#L88
 
@@ -60,7 +60,7 @@ stock_dict, time_sel = storage._fetch_hash_df_by_stock(selector, level)
 # Assume:
 # - 3,000 stocks
 # - 10 years of data (~2,500 trading days)
-# - Total rows = 3,000 × 2,500 = 7,500,000 rows
+# - Total rows = 3,000 * 2,500 = 7,500,000 rows
 
 # HashingStockStorage structure
 hash_storage = {
@@ -94,8 +94,8 @@ def get_all_stocks_on_date(storage, target_date="2024-01-01"):
     
     return pd.DataFrame(result).T
 
-# Time Complexity: O(k × log m)
-# = 3,000 × log(2,500) ≈ 3,000 × 12 = 36,000 operations
+# Time Complexity: O(k * log m)
+# = 3,000 * log(2,500) ~= 3,000 * 12 = 36,000 operations
 ```
 
 #### 2. Plain DataFrame Process
@@ -110,7 +110,7 @@ def get_all_stocks_on_date(df, target_date="2024-01-01"):
     return result
 
 # Time Complexity: O(log n)
-# = log(7,500,000) ≈ 23 operations
+# = log(7,500,000) ~= 23 operations
 ```
 
 ## Why the Huge Difference?
@@ -135,14 +135,14 @@ Assume:
 - k = 3,000 (number of stocks)
 - n = 7.5M (total rows)
 - m = 2,500 (rows per stock)
-- log₂(2,500) ≈ 12
+- log2(2,500) ~= 12
 
 | Operation | `HashingStockStorage` | Plain DataFrame |
 |-----------|----------------------|------------------|
 | Single stock all time | 1 lookup | Scan 7.5M rows |
 | Single stock single day | 1 lookup + 1 index | Scan 7.5M rows + index |
-| **All stocks single day** | **3,000 × 12 = 36,000 ops** | **log(7.5M) ≈ 23 ops** |
-| All stocks time range | 3,000 × range_size × 12 | log(7.5M) + sequential read |
+| **All stocks single day** | **3,000 * 12 = 36,000 ops** | **log(7.5M) ~= 23 ops** |
+| All stocks time range | 3,000 * range_size * 12 | log(7.5M) + sequential read |
 
 # `HashingStockStorage._fetch_hash_df_by_stock` Selector Parsing Logic
 
@@ -295,7 +295,7 @@ if isinstance(selector, tuple):
 
 ```python
 level = "instrument"
-selector = ("AAPL", "2024-01-01")  # ❌ Why pass time when explicitly selecting by stock?
+selector = ("AAPL", "2024-01-01")  # NOT OK Why pass time when explicitly selecting by stock?
 
 # Triggers TypeError
 # Error: Specifying stock level but passing tuple is不合理
@@ -354,9 +354,9 @@ stock_selector = "AAPL"  # correctly identified as stock
 | `("AAPL", "2024-01-01")` | Level 0 | `None` | stock="AAPL", time="2024-01-01" |
 | `"AAPL"` | Level 0 | `None` | stock="AAPL", time=all |
 | `["AAPL", "MSFT"]` | Level 0 | `None` | stock=["AAPL","MSFT"], time=all |
-| `"AAPL"` | Level 1 | `None` | No match → returns all stocks |
+| `"AAPL"` | Level 1 | `None` | No match -> returns all stocks |
 | `"AAPL"` | Any | `"instrument"` | stock="AAPL", time=all |
-| `("AAPL", "2024-01-01")` | Any | `"instrument"` | ❌ TypeError |
+| `("AAPL", "2024-01-01")` | Any | `"instrument"` | NOT OK TypeError |
 
 ## Design Trade-off Summary
 

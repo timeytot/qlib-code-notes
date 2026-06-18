@@ -1,4 +1,4 @@
-# Qlib AsyncCaller & Recorder Logging Mechanism
+# Qlib Parallel Utilities: AsyncCaller and Recorder Logging
 
 ## Reference Links
 - https://github.com/microsoft/qlib/blob/main/qlib/workflow/recorder.py#L445
@@ -35,12 +35,12 @@ class MLflowRecorder(Recorder):
 
    ```python
    @staticmethod
-   def async_dec(ac_attr):              # ← Factory function called with "async_log"
-       def decorator_func(func):         # ← This is the inner decorator being returned
+   def async_dec(ac_attr):              # <- Factory function called with "async_log"
+       def decorator_func(func):         # <- This is the inner decorator being returned
            def wrapper(self, *args, **kwargs):
                # ... wrapper logic ...
            return wrapper
-       return decorator_func             # ← Returns the inner decorator_func
+       return decorator_func             # <- Returns the inner decorator_func
    ```
 
 3. **Python passes the original `log_params` function to `decorator_func`**:
@@ -52,10 +52,10 @@ class MLflowRecorder(Recorder):
    - Inside `decorator_func`, it defines and returns the `wrapper` function
    
    ```python
-   def decorator_func(func):         # ← This is the inner decorator being returned
+   def decorator_func(func):         # <- This is the inner decorator being returned
        def wrapper(self, *args, **kwargs):
            # ... wrapper logic ...
-       return wrapper                # ← Returns the wrapper function
+       return wrapper                # <- Returns the wrapper function
    ```
    
    - The `wrapper` is a closure that:
@@ -65,7 +65,7 @@ class MLflowRecorder(Recorder):
 4. **Result**:
    ```python
    # The class's log_params is now the wrapper function
-   # log_params ← wrapper
+   # log_params <- wrapper
    ```
    - The name `log_params` in the class now points to the `wrapper` function
    
@@ -95,7 +95,7 @@ class MLflowRecorder(Recorder):
         # ... other code ...
         
         # Critical step: create the async caller here
-        self.async_log = AsyncCaller()           # ← Background thread starts, listening to queue
+        self.async_log = AsyncCaller()           # <- Background thread starts, listening to queue
         
         # ... subsequent code ...
 ```
@@ -110,7 +110,7 @@ When `recorder.log_params(learning_rate=0.01, batch_size=32)` is called later, t
 ```python
 # Simplified wrapper logic with partial explanation
 def wrapper(self, *args, **kwargs):
-    caller = getattr(self, "async_log", None)          # → AsyncCaller instance (normal case)
+    caller = getattr(self, "async_log", None)          # -> AsyncCaller instance (normal case)
     
     if callable(caller):
         # Key: use partial to package "original log_params + all current parameters" 
@@ -126,7 +126,7 @@ def wrapper(self, *args, **kwargs):
         
         # Alternative equivalent form (if called with original function + args):
         # caller(original_log_params_func, self, *args, **kwargs) 
-        # → This also ends up creating a partial and putting it in the queue
+        # -> This also ends up creating a partial and putting it in the queue
         
         return None  # Returns immediately, doesn't wait for execution
     else:
@@ -146,7 +146,7 @@ def __call__(self, func, *args, **kwargs):
     task = partial(func, *args, **kwargs)
     
     # Put the task into the queue
-    self._q.put(task)  # ← The queue is where tasks wait for background processing
+    self._q.put(task)  # <- The queue is where tasks wait for background processing
     
     # Returns immediately - background thread will pick up and execute later
 ```

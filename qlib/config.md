@@ -1,4 +1,4 @@
-# Understanding Qlib's Configuration System: `C` (Global Config) and `config_c`
+# Qlib Configuration: Global C and Temporary Config Objects
 
 This document explains the structure of Qlib's global configuration object `C` and the temporary configuration object `config_c`, as used in methods like `register_from_C`.
 

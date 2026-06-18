@@ -1,4 +1,4 @@
-# `format_decisions` Function Explanation
+# Qlib Backtest Initialization: format_decisions
 https://github.com/microsoft/qlib/blob/main/qlib/backtest/__init__.py#L312
 
 This function converts a flat list of trading decisions into a tree structure that reflects the nested execution hierarchy.
@@ -105,13 +105,13 @@ res = ("day", [])
 ```
 
 #### Iteration 1 (i=1, dec=min_1_1)
-- `min_1_1.freq = "1min"` ≠ "day" → skip
+- `min_1_1.freq = "1min"` ≠ "day" -> skip
 
 #### Iteration 2 (i=2, dec=min_1_2)
-- `min_1_2.freq = "1min"` ≠ "day" → skip
+- `min_1_2.freq = "1min"` ≠ "day" -> skip
 
 #### Iteration 3 (i=3, dec=day_2)
-- `day_2.freq = "day"` == "day" → found next daily decision
+- `day_2.freq = "day"` == "day" -> found next daily decision
 - `sub_decisions = decisions[1:3] = [min_1_1, min_1_2]`
 - Recursive call `format_decisions([min_1_1, min_1_2])`:
 
@@ -201,7 +201,7 @@ decisions = [day_1, min_1_1, min_1_2, day_2, min_2_1, min_2_2, min_2_3]
 #### Inside the Loop (when encountering the next same-level decision)
 
 ```
-When i=3, we find day_2 → process day_1 and its sub-decisions [min_1_1, min_1_2]
+When i=3, we find day_2 -> process day_1 and its sub-decisions [min_1_1, min_1_2]
     res[1].append((day_1, format_decisions([min_1_1, min_1_2])))
     last_dec_idx = 3
 ```

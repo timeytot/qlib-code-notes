@@ -1,4 +1,4 @@
-# Difference Between `get_data_cal_range()` and `get_range_idx()`
+# Qlib Backtest Calendar Helpers: get_data_cal_range and get_range_idx
 
 [https://github.com/microsoft/qlib/blob/main/qlib/backtest/utils.py#L133](https://github.com/microsoft/qlib/blob/main/qlib/backtest/utils.py#L133)
 

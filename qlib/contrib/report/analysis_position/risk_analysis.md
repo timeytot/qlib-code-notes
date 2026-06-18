@@ -1,4 +1,4 @@
-# Deep Dive: Understanding the GroupBy Operation in Qlib's Monthly Risk Analysis
+# Qlib Position Risk Analysis: Monthly Aggregation
 
 **Source Code Reference**: [https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/analysis_position/risk_analysis.py#L66](https://github.com/microsoft/qlib/blob/main/qlib/contrib/report/analysis_position/risk_analysis.py#L66)
 
@@ -81,19 +81,19 @@ This parameter controls whether group keys appear in the output index (as explai
 ```python
 # Original data (showing only date and return)
 date        return    year  month  (group key)
-2017-01-04  0.003421  2017  1    ──┐
-2017-01-05  0.000508  2017  1      │ Group 1: (2017,1)
-2017-01-06  -0.003321 2017  1      │
-2017-01-09  0.006753  2017  1      │
-2017-01-10  -0.000416 2017  1      │
-...         ...       ...  ...    ──┘
-2017-02-01  0.002345  2017  2    ──┐
-2017-02-02  -0.001234 2017  2      │ Group 2: (2017,2)
-2017-02-03  0.003456  2017  2      │
-...         ...       ...  ...    ──┘
-2017-03-01  0.004567  2017  3    ──┐
-2017-03-02  -0.002345 2017  3      │ Group 3: (2017,3)
-...         ...       ...  ...    ──┘
+2017-01-04  0.003421  2017  1    --+
+2017-01-05  0.000508  2017  1      | Group 1: (2017,1)
+2017-01-06  -0.003321 2017  1      |
+2017-01-09  0.006753  2017  1      |
+2017-01-10  -0.000416 2017  1      |
+...         ...       ...  ...    --+
+2017-02-01  0.002345  2017  2    --+
+2017-02-02  -0.001234 2017  2      | Group 2: (2017,2)
+2017-02-03  0.003456  2017  2      |
+...         ...       ...  ...    --+
+2017-03-01  0.004567  2017  3    --+
+2017-03-02  -0.002345 2017  3      | Group 3: (2017,3)
+...         ...       ...  ...    --+
 ```
 
 ### 1.3 Internal Structure of the GroupBy Object
@@ -284,41 +284,41 @@ print(gp_month)
 
 ```
 Original GroupBy Object
-    │
-    ▼
-┌─────────────────────────────────────┐
-│ (2017,1): 20 days                   │
-│ (2017,2): 19 days                   │
-│ (2017,3): 23 days                   │
-│ (2018,1): 22 days                   │
-│ (2017,12): 20 days                  │
-│ (2018,2): 18 days                   │
-│ ... (in no particular order)        │
-└─────────────────────────────────────┘
-    │
-    │ .size().index
-    ▼
-┌─────────────────────────────────────┐
-│ MultiIndex([                        │
-│    (2017, 1), (2017, 2), (2017, 3), │
-│    (2017, 12), (2018, 1), (2018, 2),│
-│    ... (still in creation order)    │
-│ ])                                  │
-└─────────────────────────────────────┘
-    │
-    │ set() + sorted()
-    ▼
-┌─────────────────────────────────────┐
-│ [(2017, 1), (2017, 2), (2017, 3),  │
-│  (2017, 4), (2017, 5), (2017, 6),  │
-│  (2017, 7), (2017, 8), (2017, 9),  │
-│  (2017, 10), (2017, 11), (2017, 12),│
-│  (2018, 1), (2018, 2), (2018, 3),  │
-│  ...]                               │
-└─────────────────────────────────────┘
-    │
-    │ Used in for loop
-    ▼
+    |
+    v
++-------------------------------------+
+| (2017,1): 20 days                   |
+| (2017,2): 19 days                   |
+| (2017,3): 23 days                   |
+| (2018,1): 22 days                   |
+| (2017,12): 20 days                  |
+| (2018,2): 18 days                   |
+| ... (in no particular order)        |
+`--------------------------------------+
+    |
+    | .size().index
+    v
++-------------------------------------+
+| MultiIndex([                        |
+|    (2017, 1), (2017, 2), (2017, 3), |
+|    (2017, 12), (2018, 1), (2018, 2),|
+|    ... (still in creation order)    |
+| ])                                  |
+`--------------------------------------+
+    |
+    | set() + sorted()
+    v
++-------------------------------------+
+| [(2017, 1), (2017, 2), (2017, 3),  |
+|  (2017, 4), (2017, 5), (2017, 6),  |
+|  (2017, 7), (2017, 8), (2017, 9),  |
+|  (2017, 10), (2017, 11), (2017, 12),|
+|  (2018, 1), (2018, 2), (2018, 3),  |
+|  ...]                               |
+`--------------------------------------+
+    |
+    | Used in for loop
+    v
     for gp_m in gp_month:
         # Process months in order
 ```
@@ -466,12 +466,12 @@ _temp_df = <February 2017 data>
 # After concat:
 _monthly_df = 
                                              risk        date
-excess_return_without_cost mean               0.002345   2017-01-31  ← January data
+excess_return_without_cost mean               0.002345   2017-01-31  <- January data
                            std                0.004567   2017-01-31
                            ...                ...        ...
 excess_return_with_cost    mean               0.001234   2017-01-31
                            ...                ...        ...
-excess_return_without_cost mean               0.003456   2017-02-28  ← February data (appended)
+excess_return_without_cost mean               0.003456   2017-02-28  <- February data (appended)
                            std                0.005678   2017-02-28
                            ...                ...        ...
 excess_return_with_cost    mean               0.002345   2017-02-28
@@ -531,46 +531,46 @@ This structure is perfectly prepared for the next step: extracting time series f
 
 ```
 report_normal_df (daily data)
-    │
-    ▼
+    |
+    v
 GroupBy [(year, month)] with group_keys=False
-    │
-    ├──► report_normal_gp (GroupBy object)
-    │       │
-    │       │ .size().index
-    │       ▼
-    │   MultiIndex of all (year, month) combinations
-    │       │
-    │       │ set() + sorted()
-    │       ▼
-    │   gp_month = [(2017,1), (2017,2), ...] (chronological order)
-    │
-    ▼
+    |
+    |---> report_normal_gp (GroupBy object)
+    |       |
+    |       | .size().index
+    |       v
+    |   MultiIndex of all (year, month) combinations
+    |       |
+    |       | set() + sorted()
+    |       v
+    |   gp_month = [(2017,1), (2017,2), ...] (chronological order)
+    |
+    v
 for gp_m in gp_month:
-    │
-    ├──► monthly_data = report_normal_gp.get_group(gp_m)  # Clean DatetimeIndex
-    ├──► if len(monthly_data) >= 3:
-    │       │
-    │       │ # Calculate month-end date
-    │       ├──► month_days = pd.Timestamp(gp_m[0], gp_m[1], 1).days_in_month
-    │       ├──► month_end = pd.Timestamp(gp_m[0], gp_m[1], month_days)
-    │       │
-    │       │ # Calculate monthly risk metrics
-    │       ├──► _temp_df = _get_risk_analysis_data_with_report(monthly_data, month_end)
-    │       │
-    │       │ # Append to accumulating DataFrame
-    │       └──► _monthly_df = pd.concat([_monthly_df, _temp_df], sort=False)
-    │
-    └──► Continue to next month
+    |
+    |---> monthly_data = report_normal_gp.get_group(gp_m)  # Clean DatetimeIndex
+    |---> if len(monthly_data) >= 3:
+    |       |
+    |       | # Calculate month-end date
+    |       |---> month_days = pd.Timestamp(gp_m[0], gp_m[1], 1).days_in_month
+    |       |---> month_end = pd.Timestamp(gp_m[0], gp_m[1], month_days)
+    |       |
+    |       | # Calculate monthly risk metrics
+    |       |---> _temp_df = _get_risk_analysis_data_with_report(monthly_data, month_end)
+    |       |
+    |       | # Append to accumulating DataFrame
+    |       `---> _monthly_df = pd.concat([_monthly_df, _temp_df], sort=False)
+    |
+    `---> Continue to next month
 
-    │
-    ▼
+    |
+    v
 _monthly_df (all months stacked)
-    │
-    ▼
+    |
+    v
 _get_monthly_analysis_with_feature() for each risk indicator
-    │
-    ▼
+    |
+    v
 Monthly time series plots
 ```
 
@@ -638,10 +638,10 @@ excess_return_with_cost    annualized_return 0.125678  2017-01-31
 ### Before Pivot - Structure
 ```
 DataFrame: _name_df
-├── Index: MultiIndex (level_0, level_1)
-└── Columns:
-    ├── 'risk' (the actual values)
-    └── 'date' (row identifier for pivot)
+|--- Index: MultiIndex (level_0, level_1)
+`--- Columns:
+    |--- 'risk' (the actual values)
+    `--- 'date' (row identifier for pivot)
 ```
 
 ### During Pivot - The 'risk' Column is Consumed
@@ -675,31 +675,31 @@ MultiIndex([('risk', ('excess_return_without_cost', 'annualized_return')),
 
 ```
 BEFORE PIVOT:
-┌─────────────────────────────────────────────────────────────┐
-│ _name_df                                                    │
-├───────────────────┬───────────────────┬─────────┬──────────┤
-│ Index (level_0)   │ Index (level_1)   │ risk    │ date     │ ← 'risk' is a column
-├───────────────────┼───────────────────┼─────────┼──────────┤
-│ without_cost      │ annualized        │ 0.156789│ 2017-01-31│
-│ with_cost         │ annualized        │ 0.125678│ 2017-01-31│
-│ without_cost      │ annualized        │ 0.167890│ 2017-02-28│
-│ with_cost         │ annualized        │ 0.134567│ 2017-02-28│
-└───────────────────┴───────────────────┴─────────┴──────────┘
-                           │
-                           │ pivot_table(values=["risk"])
-                           ▼
++-------------------------------------------------------------+
+| _name_df                                                    |
+|--------------------+-------------------+---------+----------+
+| Index (level_0)   | Index (level_1)   | risk    | date     | <- 'risk' is a column
+|--------------------+-------------------+---------+----------+
+| without_cost      | annualized        | 0.156789| 2017-01-31|
+| with_cost         | annualized        | 0.125678| 2017-01-31|
+| without_cost      | annualized        | 0.167890| 2017-02-28|
+| with_cost         | annualized        | 0.134567| 2017-02-28|
+`--------------------+-------------------+---------+----------+
+                           |
+                           | pivot_table(values=["risk"])
+                           v
 
 AFTER PIVOT:
-┌─────────────────────────────────────────────────────────────┐
-│ _temp_df                                                     │
-├───────────────┬─────────────────────────────────────────────┤
-│               │ risk                                         │ ← 'risk' becomes top level
-│               ├─────────────────────┬───────────────────────┤
-│ date          │ (without_cost, annualized) │ (with_cost, annualized) │
-├───────────────┼─────────────────────┼───────────────────────┤
-│ 2017-01-31    │ 0.156789            │ 0.125678              │ ← values now in cells
-│ 2017-02-28    │ 0.167890            │ 0.134567              │
-└───────────────┴─────────────────────┴───────────────────────┘
++-------------------------------------------------------------+
+| _temp_df                                                     |
+|----------------+---------------------------------------------+
+|               | risk                                         | <- 'risk' becomes top level
+|               |----------------------+-----------------------+
+| date          | (without_cost, annualized) | (with_cost, annualized) |
+|----------------+---------------------+-----------------------+
+| 2017-01-31    | 0.156789            | 0.125678              | <- values now in cells
+| 2017-02-28    | 0.167890            | 0.134567              |
+`----------------+---------------------+-----------------------+
 ```
 
 ---
@@ -743,36 +743,36 @@ new_names_good = ['excess_return_without_cost_annualized_return',
 
 ```
 Phase 1: Original Data (with 'risk' column)
-┌─────────────────────────────────────────────────────┐
-│         level_0     level_1    risk        date     │
-│ 0  without_cost  annualized  0.156789  2017-01-31   │
-│ 1  with_cost     annualized  0.125678  2017-01-31   │
-│ 2  without_cost  annualized  0.167890  2017-02-28   │
-│ 3  with_cost     annualized  0.134567  2017-02-28   │
-└─────────────────────────────────────────────────────┘
-                           │
-                           │ pivot_table(index="date", values=["risk"], columns=index)
-                           ▼
++-----------------------------------------------------+
+|         level_0     level_1    risk        date     |
+| 0  without_cost  annualized  0.156789  2017-01-31   |
+| 1  with_cost     annualized  0.125678  2017-01-31   |
+| 2  without_cost  annualized  0.167890  2017-02-28   |
+| 3  with_cost     annualized  0.134567  2017-02-28   |
+`------------------------------------------------------+
+                           |
+                           | pivot_table(index="date", values=["risk"], columns=index)
+                           v
 
 Phase 2: After Pivot (MultiIndex columns with 'risk')
-┌─────────────────────────────────────────────────────┐
-│ date        risk                                    │
-│             (without_cost, annualized)  (with_cost, annualized) │
-├────────────┼──────────────────────────┼──────────────────────────┤
-│ 2017-01-31 │ 0.156789                 │ 0.125678                 │
-│ 2017-02-28 │ 0.167890                 │ 0.134567                 │
-└────────────┴──────────────────────────┴──────────────────────────┘
-                           │
-                           │ map(lambda x: "_".join(x[-1]))
-                           ▼
++-----------------------------------------------------+
+| date        risk                                    |
+|             (without_cost, annualized)  (with_cost, annualized) |
+|-------------+--------------------------+--------------------------+
+| 2017-01-31 | 0.156789                 | 0.125678                 |
+| 2017-02-28 | 0.167890                 | 0.134567                 |
+`-------------+--------------------------+--------------------------+
+                           |
+                           | map(lambda x: "_".join(x[-1]))
+                           v
 
 Phase 3: Final Result ('risk' removed)
-┌─────────────────────────────────────────────────────┐
-│ date        without_cost_annualized  with_cost_annualized │
-├────────────┼────────────────────────┼──────────────────────┤
-│ 2017-01-31 │ 0.156789               │ 0.125678             │
-│ 2017-02-28 │ 0.167890               │ 0.134567             │
-└────────────┴────────────────────────┴──────────────────────┘
++-----------------------------------------------------+
+| date        without_cost_annualized  with_cost_annualized |
+|-------------+------------------------+----------------------+
+| 2017-01-31 | 0.156789               | 0.125678             |
+| 2017-02-28 | 0.167890               | 0.134567             |
+`-------------+------------------------+----------------------+
 ```
 
 ---

@@ -168,16 +168,16 @@ The high-level flow is:
 
 ```text
 Account.update_indicator()
-    ↓
+    v
 Indicator.reset()
-    ↓
+    v
 if atomic=True:
     Indicator.update_order_indicators(trade_info)
 else:
     Indicator.agg_order_indicators(...)
-    ↓
+    v
 Indicator.cal_trade_indicators(...)
-    ↓
+    v
 Indicator.record(trade_start_time)
 ```
 
@@ -208,9 +208,9 @@ The flow is:
 
 ```text
 update_order_indicators(trade_info)
-    ↓
+    v
 _update_order_trade_info(trade_info)
-    ↓
+    v
 _update_order_fulfill_rate()
 ```
 
@@ -363,7 +363,7 @@ Dependency graph:
 
 ```text
 inner_order_indicators
-    ↓
+    v
 _agg_order_trade_info()
     produces:
         inner_amount
@@ -374,26 +374,26 @@ _agg_order_trade_info()
         trade_dir
 
 outer_trade_decision
-    ↓
+    v
 _update_trade_amount()
     produces:
         amount
 
 amount + deal_amount
-    ↓
+    v
 _update_order_fulfill_rate()
     produces:
         ffr
 
 inner_order_indicators + decision_list + trade_exchange + trade_dir
-    ↓
+    v
 _agg_base_price()
     produces:
         base_price
         base_volume
 
 trade_price + base_price + trade_dir
-    ↓
+    v
 _agg_order_price_advantage()
     produces:
         pa

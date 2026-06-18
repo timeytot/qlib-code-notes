@@ -1,4 +1,4 @@
-# Python Descriptor-Powered Operator Overloading in `index_data`
+# Qlib IndexData: Descriptor-Powered Operator Overloading
 
 **Code Reference:** [`qlib/utils/index_data.py#L332`](https://github.com/microsoft/qlib/blob/main/qlib/utils/index_data.py#L332) - `__get__, self_data_method(other_aligned.data), index_data_ops_creator, class IndexData(metaclass=index_data_ops_creator)`
 
@@ -11,7 +11,7 @@ The design is elegant: **all operators share the same implementation, automatica
 When Python encounters `s1 + s2`:
 
 1. It looks up `s1.__add__` to call `s1.__add__(s2)`.
-2. `__add__` is **not** a regular method — it is a `BinaryOps` descriptor instance injected into the class by a metaclass.
+2. `__add__` is **not** a regular method  -  it is a `BinaryOps` descriptor instance injected into the class by a metaclass.
 3. Because `BinaryOps` implements `__get__`, Python's descriptor protocol kicks in.
 4. Accessing `s1.__add__` automatically calls:
    ```python
@@ -24,7 +24,7 @@ When Python encounters `s1 + s2`:
    ```
 6. Python immediately calls the returned object with the right operand:
    ```python
-   bound_binary_ops(s2)   # → enters BinaryOps.__call__(other=s2)
+   bound_binary_ops(s2)   # -> enters BinaryOps.__call__(other=s2)
    ```
 7. This is why the left operand (`s1`) is available inside `__call__` as `self.obj`.
 
@@ -63,7 +63,7 @@ The function modifies `args[2]` (the class dictionary) by inserting a `BinaryOps
 
 **Result:** All subclasses of `IndexData` (`SingleData`, `MultiData`) automatically support the operators.
 
-## 3. Inside `BinaryOps.__call__` – The Real Computation
+## 3. Inside `BinaryOps.__call__` - The Real Computation
 
 ```python
 def __call__(self, other):
@@ -86,7 +86,7 @@ def __call__(self, other):
 #### Why `self_data_method` is a NumPy ufunc
 
 ```python
-self_data_method = getattr(self.obj.data, "__add__")  # → np.add
+self_data_method = getattr(self.obj.data, "__add__")  # -> np.add
 ```
 
 - `self.obj.data` is a `np.ndarray`
@@ -99,7 +99,7 @@ NumPy ufuncs obtained via `getattr(array, "__add__")` are partially bound to the
 
 ```python
 add_func = arr1.__add__        # bound version of np.add
-add_func(arr2)                 # → internally calls np.add(arr1, arr2)
+add_func(arr2)                 # -> internally calls np.add(arr1, arr2)
 ```
 
 Thus:
@@ -112,7 +112,7 @@ np.add(self.obj.data, other_aligned.data)
 
 This is a NumPy idiom that saves writing the left operand twice.
 
-#### `*self.obj.indices` – Unpacking Indices
+#### `*self.obj.indices` - Unpacking Indices
 
 `self.obj.indices` is a list of `Index` objects:
 
@@ -136,4 +136,4 @@ This preserves the original indices (aligned to the left operand, just like Pand
 - **NumPy ufuncs** provide blazing-fast vectorized computation.
 - The result is recreated with the left operand's class and indices, ensuring consistent alignment behavior.
 
-This pattern combines Python's descriptor protocol with NumPy's performance — a clean, reusable, and extremely efficient way to implement operator overloading for array-like objects.
+This pattern combines Python's descriptor protocol with NumPy's performance  -  a clean, reusable, and extremely efficient way to implement operator overloading for array-like objects.

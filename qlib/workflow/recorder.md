@@ -1,3 +1,5 @@
+# Qlib Recorder Shutdown: Waiting for async_log
+
 ## `with TimeInspector.logt("waiting `async_log`"): self.async_log.wait()` Execution Flow
 
 **Source files**: 
@@ -36,7 +38,7 @@ finally:
 
 **Assumptions**:
 - Current time: `2026-02-28 18:30:00.000` (experiment end time)
-- Queue still has **120 pending metrics** (e.g., 10 metrics per epoch × 12 epochs)
+- Queue still has **120 pending metrics** (e.g., 10 metrics per epoch * 12 epochs)
 - Each `mlflow.log_metric()` takes ~0.025 seconds (remote server latency)
 - Network is normal, no exceptions
 
@@ -61,19 +63,19 @@ def wait(self, close=True):
 - **STOP_MARK insertion**: Instant (negligible time)
 - **Background thread** continues processing the remaining 120 tasks:
   - Each task is `partial(mlflow.log_metric, run_id, key, value, step)`
-  - Total time ≈ 120 × 0.025s = **3.000 seconds**
+  - Total time ~= 120 * 0.025s = **3.000 seconds**
 
 - **Main thread** (calling `end_run()`) blocks here for ~3 seconds.
 
 #### Step 3: Background thread finishes processing and exits
-- Background thread sees `STOP_MARK` → exits the while loop
-- `self._t.join()` returns → `wait()` function completes
+- Background thread sees `STOP_MARK` -> exits the while loop
+- `self._t.join()` returns -> `wait()` function completes
 
 #### Step 4: Exit the with block (finally block executes)
 
 ```python
 # Current time assumed: 2026-02-28 18:30:03.200
-now = time.time() ≈ 1711703403.200
+now = time.time() ~= 1711703403.200
 
 cost_time = 1711703403.200 - 1711703400.000 = 3.200 seconds
 
@@ -99,9 +101,9 @@ Example log fragment at experiment end:
 
 | Queue Size | Avg Log Time | Total Wait Time | Scenario |
 |------------|--------------|-----------------|----------|
-| 0–20 | 0.01–0.03s | 0.0–0.6s | Small experiments, low log frequency, local MLflow |
-| 50–200 | 0.02–0.05s | 1–10s | Medium experiments, remote MLflow, multiple metrics per epoch |
-| 500+ | 0.03–0.1s | 15–60s+ | Large parallel experiments, frequent logging, slow server |
+| 0-20 | 0.01-0.03s | 0.0-0.6s | Small experiments, low log frequency, local MLflow |
+| 50-200 | 0.02-0.05s | 1-10s | Medium experiments, remote MLflow, multiple metrics per epoch |
+| 500+ | 0.03-0.1s | 15-60s+ | Large parallel experiments, frequent logging, slow server |
 
 ### 5. Summary: What This Code Actually Does
 
@@ -121,7 +123,7 @@ Example log fragment at experiment end:
 def wait(self, close=True):
     if close:
         self.close()          # Put STOP_MARK into queue
-    self._t.join()            # ← Main thread blocks here until _t thread finishes
+    self._t.join()            # <- Main thread blocks here until _t thread finishes
 ```
 
 - `self._t` is a `Thread` object (created in `__init__` with `Thread(target=self.run)`)
@@ -145,14 +147,14 @@ def run(self):
         try:
             data = self._q.get(timeout=1)
         except Empty:
-            # Queue empty → do nothing, continue next loop (enables main thread checks)
+            # Queue empty -> do nothing, continue next loop (enables main thread checks)
             continue
 
         # Got something, check what it is
         if data == self.STOP_MARK:
-            break  # Received stop signal → exit loop, thread naturally ends
+            break  # Received stop signal -> exit loop, thread naturally ends
 
-        # Normal task → execute it (data is a partial object)
+        # Normal task -> execute it (data is a partial object)
         data()
 ```
 
@@ -160,12 +162,12 @@ def run(self):
 
 | Line | Code | Meaning | When Executed | Possible Outcome |
 |------|------|---------|---------------|------------------|
-| 1 | `while True:` | Infinite loop (main thread loop) | Runs continuously after thread start | — |
-| 2 | `main_thread = threading.main_thread()` | Get current main thread object | Every loop iteration (minimal overhead) | — |
+| 1 | `while True:` | Infinite loop (main thread loop) | Runs continuously after thread start |  -  |
+| 2 | `main_thread = threading.main_thread()` | Get current main thread object | Every loop iteration (minimal overhead) |  -  |
 | 3 | `if not main_thread.is_alive(): break` | If main thread died (process exiting), child thread should commit suicide | When main process is killed, Ctrl+C, abnormal exit, or main thread ends | Thread exits (prevents orphan threads) |
-| 4 | `try: data = self._q.get(timeout=1)` | Get task from queue, wait max 1 second | Every loop iteration | Success → data is `partial` or `STOP_MARK`; Timeout → raises `Empty` |
-| 5 | `except Empty: continue` | Queue empty → skip this loop, continue next iteration (critical!) | When queue is empty | Prevents `get()` from blocking forever, allows main thread checks |
-| 6 | `if data == self.STOP_MARK: break` | Received stop signal → exit loop | After `wait()` calls `close()` | Thread exits normally |
+| 4 | `try: data = self._q.get(timeout=1)` | Get task from queue, wait max 1 second | Every loop iteration | Success -> data is `partial` or `STOP_MARK`; Timeout -> raises `Empty` |
+| 5 | `except Empty: continue` | Queue empty -> skip this loop, continue next iteration (critical!) | When queue is empty | Prevents `get()` from blocking forever, allows main thread checks |
+| 6 | `if data == self.STOP_MARK: break` | Received stop signal -> exit loop | After `wait()` calls `close()` | Thread exits normally |
 | 7 | `data()` | Execute task (usually `partial(mlflow.log_xxx, ...)`) | When normal task is retrieved | Log sending executes, time depends on network/MLflow server |
 
 ### 3. Real-World Data Example (Timeline)
@@ -180,14 +182,14 @@ def run(self):
 
 | Time | Who | What Happens | Queue Remaining | Child Thread State | Main Thread State |
 |------|-----|--------------|-----------------|-------------------|-------------------|
-| t=0.0 | Main | `self.async_log.wait()` starts → `close()` → puts `STOP_MARK` | 3 → 4 (including STOP) | Running | Blocked in `join()` |
-| t=0.1 | Child | Loop → `q.get()` gets first metric task | 3 | Executing | Blocked |
+| t=0.0 | Main | `self.async_log.wait()` starts -> `close()` -> puts `STOP_MARK` | 3 -> 4 (including STOP) | Running | Blocked in `join()` |
+| t=0.1 | Child | Loop -> `q.get()` gets first metric task | 3 | Executing | Blocked |
 | t=0.9 | Child | First task completes (log_metric done) | 2 | Continues loop | Blocked |
-| t=0.9+ | Child | Gets second task → executes | 2 → 1 | Executing | Blocked |
-| t=1.7 | Child | Second completes → gets third | 1 → 0 | Executing | Blocked |
-| t=2.5 | Child | Third completes → queue only has STOP_MARK | 0 → STOP | Gets STOP_MARK | Blocked |
-| t=2.5+ | Child | `if data == STOP_MARK: break` → exits while loop | 0 | Thread terminates (TERMINATED) | — |
-| t=2.51 | Main | `join()` returns → `wait()` ends | 0 | Dead | Continues to `mlflow.end_run()` |
+| t=0.9+ | Child | Gets second task -> executes | 2 -> 1 | Executing | Blocked |
+| t=1.7 | Child | Second completes -> gets third | 1 -> 0 | Executing | Blocked |
+| t=2.5 | Child | Third completes -> queue only has STOP_MARK | 0 -> STOP | Gets STOP_MARK | Blocked |
+| t=2.5+ | Child | `if data == STOP_MARK: break` -> exits while loop | 0 | Thread terminates (TERMINATED) |  -  |
+| t=2.51 | Main | `join()` returns -> `wait()` ends | 0 | Dead | Continues to `mlflow.end_run()` |
 
 **Final log output** (if wrapped with `TimeInspector`):
 ```
